@@ -7,6 +7,7 @@ mod barcode_row;
 mod changelog;
 mod consumption;
 pub mod diesel_schema;
+mod exclusive;
 mod filter_sort_pagination;
 mod inventory_adjustment_reason;
 mod inventory_adjustment_reason_row;

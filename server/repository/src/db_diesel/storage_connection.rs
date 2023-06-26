@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use super::{get_connection, DBBackendConnection, DBConnection};
+use super::{exclusive::Exclusive, get_connection, DBBackendConnection, DBConnection};
 
 use crate::repository_error::RepositoryError;
 
@@ -63,6 +63,68 @@ impl From<TransactionError<RepositoryError>> for RepositoryError {
                 RepositoryError::TransactionError { msg, level }
             }
             TransactionError::Inner(e) => e,
+        }
+    }
+}
+
+pub async fn transaction_etc<'a, T, E, F, Fut>(
+    sc: &'a mut Exclusive<StorageConnection>,
+    f: F,
+    reuse_tx: bool,
+) -> Result<T, TransactionError<E>>
+where
+    F: FnOnce(&'a mut Exclusive<StorageConnection>) -> Fut,
+    Fut: Future<Output = (Result<T, E>, &'a mut Exclusive<StorageConnection>)>,
+{
+    let current_level = sc.get_mut().transaction_level.get();
+    if current_level > 0 && reuse_tx {
+        let result = f(sc).await.0.map_err(|err| TransactionError::Inner(err))?;
+        return Ok(result);
+    }
+
+    if current_level == 0 {
+        let con = &sc.get_mut().connection;
+        // sqlite can only have 1 writer at a time, so to avoid concurrency issues,
+        // the first level transaction for sqlite, needs to run 'BEGIN IMMEDIATE' to start the transaction in WRITE mode.
+        con.transaction_manager()
+            .begin_transaction_sql(con, BEGIN_TRANSACTION_STATEMENT)
+    } else {
+        let con = &sc.get_mut().connection;
+        con.transaction_manager().begin_transaction(con)
+    }
+    .map_err(|e| map_begin_transaction_error(e, current_level))?;
+
+    sc.get_mut().transaction_level.set(current_level + 1);
+    let result = f(sc).await;
+    let sc = result.1;
+    sc.get_mut().transaction_level.set(current_level);
+
+    match result.0 {
+        Ok(value) => {
+            let con = &sc.get_mut().connection;
+            con.transaction_manager()
+                .commit_transaction(con)
+                .map_err(|err| {
+                    error!("Failed to end tx: {:?}", err);
+                    TransactionError::Transaction {
+                        msg: format!("Failed to end tx: {}", err),
+                        level: current_level + 1,
+                    }
+                })?;
+            Ok(value)
+        }
+        Err(e) => {
+            let con = &sc.get_mut().connection;
+            con.transaction_manager()
+                .rollback_transaction(con)
+                .map_err(|err| {
+                    error!("Failed to rollback tx: {:?}", err);
+                    TransactionError::Transaction {
+                        msg: format!("Failed to rollback tx: {}", err),
+                        level: current_level + 1,
+                    }
+                })?;
+            Err(TransactionError::Inner(e))
         }
     }
 }
@@ -245,7 +307,10 @@ impl StorageConnectionManager {
 
 #[cfg(test)]
 mod connection_manager_tests {
-    use crate::{test_db, RepositoryError, TransactionError};
+    use crate::{
+        db_diesel::exclusive::Exclusive, test_db, transaction_etc, RepositoryError,
+        StorageConnection, TransactionError,
+    };
 
     #[actix_rt::test]
     async fn test_nested_tx() {
@@ -288,5 +353,74 @@ mod connection_manager_tests {
                 true,
             );
         assert_eq!(connection.transaction_level.get(), 0);
+    }
+
+    struct AsyncRepo<'a> {
+        pub con: &'a mut Exclusive<StorageConnection>,
+    }
+    impl<'a> AsyncRepo<'a> {
+        pub async fn test(&mut self) {}
+    }
+
+    struct AsyncService1 {}
+    impl AsyncService1 {
+        pub async fn service1(&self, con: &mut Exclusive<StorageConnection>) {
+            let mut repo = AsyncRepo { con };
+            repo.test().await;
+
+            let mut repo2 = AsyncRepo { con };
+            repo2.test().await;
+        }
+    }
+
+    struct AsyncService2 {}
+    impl AsyncService2 {
+        pub async fn service2(
+            &self,
+            con: &mut Exclusive<StorageConnection>,
+            service1: AsyncService1,
+        ) {
+            service1.service1(con).await;
+        }
+    }
+
+    #[actix_rt::test]
+    async fn test_async_con() {
+        tokio::task::spawn(async {
+            let settings = test_db::get_test_db_settings("omsupply-test-async-con");
+            let connection_manager = test_db::setup(&settings).await;
+            let mut connection = connection_manager.connection().unwrap();
+            let connection = Exclusive::from_mut(&mut connection);
+            transaction_etc(
+                connection,
+                |con| async move {
+                    let service1 = AsyncService1 {};
+                    let service2 = AsyncService2 {};
+                    service2.service2(con, service1).await;
+
+                    transaction_etc(
+                        con,
+                        |con| async move {
+                            let service1 = AsyncService1 {};
+                            let service2 = AsyncService2 {};
+                            service2.service2(con, service1).await;
+                            (Result::<bool, ()>::Ok(true), con)
+                        },
+                        true,
+                    )
+                    .await
+                    .unwrap();
+
+                    service2.service2(con, AsyncService1 {}).await;
+
+                    (Result::<bool, ()>::Ok(true), con)
+                },
+                true,
+            )
+            .await
+            .unwrap();
+        })
+        .await
+        .unwrap();
     }
 }
