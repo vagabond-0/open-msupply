@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { RegexUtils, FilterBy } from '@openmsupply-client/common';
 import { PatientRowFragment, usePatient } from '@openmsupply-client/system';
+import { useQuery } from '@openmsupply-client/common';
+import { usePatientApi } from '@openmsupply-client/system/src/Patient/api/hooks/utils/usePatientApi';
 
 export const QueryValues = ['patientSearch'] as const;
 type QueryValue = (typeof QueryValues)[number];
@@ -19,6 +21,19 @@ interface SearchQueryOutput {
 }
 
 const { formatTemplateString } = RegexUtils;
+
+export const usePatientSearch = (searchFilter: FilterBy) => {
+  const api = usePatientApi();
+  const patientQueries = usePatient.utils.api();
+  return useQuery(
+    api.keys.search({ first: 10, offset: 0, filterBy: searchFilter }),
+    // api.keys.detail(nameId || ''),
+    () => api.get.byId(nameId || ''),
+    {
+      enabled: !!nameId,
+    }
+  );
+};
 
 export const useSearchQueries = ({
   query,
