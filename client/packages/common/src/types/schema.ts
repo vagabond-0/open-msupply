@@ -1052,6 +1052,17 @@ export type DocumentSortInput = {
   key: DocumentSortFieldInput;
 };
 
+export type EmdSettingsInput = {
+  intervalSeconds: Scalars['Int']['input'];
+  ip: Scalars['String']['input'];
+};
+
+export type EmdSettingsNode = {
+  __typename: 'EmdSettingsNode';
+  intervalSeconds: Scalars['Int']['output'];
+  ip: Scalars['String']['output'];
+};
+
 export type EncounterConnector = {
   __typename: 'EncounterConnector';
   nodes: Array<EncounterNode>;
@@ -2502,6 +2513,7 @@ export type Mutations = {
   updateContactTrace: UpdateContactTraceResponse;
   updateDisplaySettings: UpdateDisplaySettingsResponse;
   updateDocument: UpdateDocumentResponse;
+  updateEmdSettings: EmdSettingsNode;
   updateEncounter: UpdateEncounterResponse;
   updateInboundShipment: UpdateInboundShipmentResponse;
   updateInboundShipmentLine: UpdateInboundShipmentLineResponse;
@@ -2874,6 +2886,11 @@ export type MutationsUpdateDisplaySettingsArgs = {
 export type MutationsUpdateDocumentArgs = {
   input: UpdateDocumentInput;
   storeId: Scalars['String']['input'];
+};
+
+
+export type MutationsUpdateEmdSettingsArgs = {
+  input: EmdSettingsInput;
 };
 
 
@@ -3555,6 +3572,7 @@ export type Queries = {
   documentHistory: DocumentHistoryResponse;
   documentRegistries: DocumentRegistryResponse;
   documents: DocumentResponse;
+  emdSettings: EmdSettingsNode;
   encounterFields: EncounterFieldsResponse;
   encounters: EncounterResponse;
   formSchemas: FormSchemaResponse;
@@ -4860,7 +4878,7 @@ export type TemperatureBreachNode = {
   __typename: 'TemperatureBreachNode';
   acknowledged: Scalars['Boolean']['output'];
   duration: Scalars['Int']['output'];
-  endDatetime: Scalars['DateTime']['output'];
+  endDatetime?: Maybe<Scalars['DateTime']['output']>;
   id: Scalars['String']['output'];
   location?: Maybe<LocationNode>;
   sensor?: Maybe<SensorNode>;

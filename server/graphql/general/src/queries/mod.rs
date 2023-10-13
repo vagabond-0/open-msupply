@@ -42,6 +42,8 @@ pub mod log;
 pub use self::log::*;
 pub mod last_successful_user_sync;
 pub use self::last_successful_user_sync::*;
+pub mod emd_settings;
+pub use self::emd_settings::*;
 
 #[cfg(test)]
 mod tests;

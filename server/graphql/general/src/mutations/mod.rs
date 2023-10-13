@@ -1,6 +1,7 @@
 pub mod barcode;
 pub mod common;
 pub mod display_settings;
+pub mod emd_settings;
 pub mod initialise_site;
 pub mod log;
 pub mod manual_sync;

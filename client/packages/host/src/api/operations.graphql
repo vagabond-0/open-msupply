@@ -25,3 +25,17 @@ mutation updateDisplaySettings($displaySettings: DisplaySettingsInput!) {
     }
   }
 }
+
+query getEmdSettings {
+  emdSettings {
+    ip
+    intervalSeconds
+  }
+}
+
+mutation updateEmdSettings($input: EmdSettingsInput) {
+  updateEmdSettings(input: $input) {
+    ip
+    intervalSeconds
+  }
+}
