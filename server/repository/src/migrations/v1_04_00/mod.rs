@@ -13,6 +13,14 @@ impl Migration for V1_04_00 {
     fn migrate(&self, connection: &StorageConnection) -> anyhow::Result<()> {
         contact_trace::migrate(connection)?;
         date_of_death::migrate(connection)?;
+
+        #[cfg(feature = "postgres")]
+        sql!(
+            r#"
+ALTER TYPE key_type ADD VALUE IF NOT EXISTS 'EMD_IP';
+ALTER TYPE key_type ADD VALUE IF NOT EXISTS 'EMD_INTERVAL_SECONDS';"#
+        );
+
         Ok(())
     }
 }

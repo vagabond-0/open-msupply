@@ -19,6 +19,7 @@ use repository::{get_storage_connection_manager, migrations::migrate};
 
 use service::{
     auth_data::AuthData,
+    emd_driver::{self, EmdDriver},
     processors::Processors,
     service_provider::ServiceProvider,
     settings::{is_develop, ServerSettings, Settings},
@@ -244,6 +245,9 @@ pub async fn start_server(
         .run(),
     );
 
+    let service_provider_closure = service_provider.clone().into_inner();
+    let task = tokio::spawn(async move { EmdDriver::run(service_provider_closure).await });
+
     // ADD SYSTEM USER
     service_provider
         .general_service
@@ -301,6 +305,7 @@ pub async fn start_server(
         // TODO log error in ctrl_c and None in off_switch
         _ = tokio::signal::ctrl_c() => {},
         Some(_) = off_switch.recv() => {},
+        _ = task => {},
         _ = synchroniser_task => unreachable!("Synchroniser unexpectedly stopped"),
         result = processors_task => unreachable!("Processor terminated ({:?})", result)
     };

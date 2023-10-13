@@ -15,6 +15,7 @@ use mutations::{
     display_settings::{
         update_display_settings, DisplaySettingsInput, UpdateDisplaySettingsResponse,
     },
+    emd_settings::{update_emd_settings, EmdSettingsInput},
     initialise_site::{initialise_site, InitialiseSiteResponse},
     log::{update_log_level, LogLevelInput, UpsertLogLevelResponse},
     manual_sync::manual_sync,
@@ -187,6 +188,10 @@ impl GeneralQueries {
         sync_settings(ctx, true)
     }
 
+    pub async fn emd_settings(&self, ctx: &Context<'_>) -> Result<EmdSettingsNode> {
+        emd_settings::emd_settings(ctx)
+    }
+
     pub async fn display_settings(
         &self,
         ctx: &Context<'_>,
@@ -284,6 +289,14 @@ impl GeneralMutations {
         input: SyncSettingsInput,
     ) -> Result<UpdateSyncSettingsResponse> {
         update_sync_settings(ctx, input).await
+    }
+
+    pub async fn update_emd_settings(
+        &self,
+        ctx: &Context<'_>,
+        input: EmdSettingsInput,
+    ) -> Result<EmdSettingsNode> {
+        update_emd_settings(ctx, input).await
     }
 
     // Only available for graphql introspection, error will be thrown after PreInitialisation state

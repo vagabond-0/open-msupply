@@ -25,6 +25,9 @@ pub enum KeyValueType {
     ShipmentTransferProcessorCursor,
     RequisitionTransferProcessorCursor,
 
+    EmdIP,
+    EmdIntervalSeconds,
+
     SettingsSyncUrl,
     SettingsSyncUsername,
     SettingsSyncPasswordSha256,

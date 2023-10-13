@@ -23,6 +23,7 @@ import { useHost } from '../api';
 import { SiteInfo } from '../components/SiteInfo';
 import { AndroidSettings } from './AndroidSettings';
 import { ElectronSettings } from './ElectronSettings';
+import { EmdSettings } from './EmdSettings';
 
 export const Settings: React.FC = () => {
   const t = useTranslation('common');
@@ -146,6 +147,7 @@ export const Settings: React.FC = () => {
           title={t('heading.custom-logo')}
         />
         <SyncSettings />
+        <EmdSettings />
         <AndroidSettings />
         <ElectronSettings />
       </Grid>

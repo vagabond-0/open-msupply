@@ -16,6 +16,7 @@ mod common_stock;
 pub mod dashboard;
 pub mod display_settings_service;
 pub mod document;
+pub mod emd_driver;
 pub mod inventory_adjustment_reason;
 pub mod invoice;
 pub mod invoice_line;
