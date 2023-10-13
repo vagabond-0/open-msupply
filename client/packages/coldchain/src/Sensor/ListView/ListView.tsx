@@ -76,14 +76,14 @@ export const SensorListView: FC = () => {
         },
         sortable: false,
       },
-      {
-        key: 'type',
-        label: 'label.sensor-type',
-        accessor: ({ rowData }) => {
-          return Formatter.enumCase(rowData?.type);
-        },
-        sortable: false,
-      },
+      // {
+      //   key: 'type',
+      //   label: 'label.sensor-type',
+      //   accessor: ({ rowData }) => {
+      //     return Formatter.enumCase(rowData?.type);
+      //   },
+      //   sortable: false,
+      // },
       {
         key: 'breach',
         label: 'label.breach',

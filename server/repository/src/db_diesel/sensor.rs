@@ -95,7 +95,7 @@ impl<'a> SensorRepository<'a> {
                 query = query.filter(sensor_dsl::is_active.eq(value));
             }
 
-            apply_equal_filter!(query, filter.store_id, sensor_dsl::store_id);
+            // apply_equal_filter!(query, filter.store_id, sensor_dsl::store_id);
         }
 
         query

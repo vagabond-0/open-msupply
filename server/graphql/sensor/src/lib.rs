@@ -177,6 +177,7 @@ mod test {
                                 + Duration::seconds(47046),
                         ),
                         r#type: SensorType::BlueMaestro,
+                        ..Default::default()
                     },
                 }],
                 count: 1,

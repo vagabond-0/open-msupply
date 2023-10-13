@@ -85,6 +85,7 @@ mod query {
                 log_interval: Some(10),
                 last_connection_datetime: None,
                 r#type: SensorType::BlueMaestro,
+                ..Default::default()
             },
         };
 
@@ -137,6 +138,7 @@ mod query {
                     log_interval: Some(10),
                     last_connection_datetime: None,
                     r#type: SensorType::BlueMaestro,
+                    ..Default::default()
                 }
             })
         );

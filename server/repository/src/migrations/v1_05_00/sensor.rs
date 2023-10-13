@@ -29,6 +29,7 @@ pub(crate) fn migrate(connection: &StorageConnection) -> anyhow::Result<()> {
                 location_id TEXT REFERENCES location(id),
                 battery_level INTEGER,
                 log_interval INTEGER,
+                temperature {DOUBLE},
                 last_connection_datetime {DATETIME},
                 type {SENSOR_TYPE}
             );

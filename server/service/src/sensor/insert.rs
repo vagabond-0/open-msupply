@@ -74,6 +74,7 @@ pub fn generate(
         log_interval: Some(10),
         last_connection_datetime: None,
         r#type,
+        ..Default::default()
     }
 }
 

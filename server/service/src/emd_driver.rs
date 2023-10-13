@@ -4,8 +4,8 @@ use crate::{service_provider::ServiceProvider, sync::ActiveStoresOnSite};
 
 use chrono::Utc;
 use repository::{
-    KeyValueStoreRepository, KeyValueType, SensorRow, SensorRowRepository, TemperatureLogRow,
-    TemperatureLogRowRepository,
+    KeyValueStoreRepository, KeyValueType, SensorRow, SensorRowRepository, SensorType,
+    TemperatureLogRow, TemperatureLogRowRepository,
 };
 use reqwest::Client;
 use tokio::time::Duration;
@@ -55,7 +55,8 @@ impl EmdDriver {
             };
 
             let mut lines = text.split("\n");
-            let is_door_open_or_power_off = lines.next().unwrap_or("false") == "true";
+            let is_door_open = lines.next().unwrap_or("false") == "true";
+            let is_powered = lines.next().unwrap_or("false") == "true";
             let temperature = match lines
                 .next()
                 .unwrap_or("will not parse to float")
@@ -63,12 +64,12 @@ impl EmdDriver {
             {
                 Ok(temperature) => temperature,
                 Err(e) => {
-                    log::error!("Cannot parse temperature {:?}", e);
+                    log::error!("Cannot parse temperature {:?}", e,);
                     continue;
                 }
             };
 
-            log::info!("Data {} {}", is_door_open_or_power_off, temperature);
+            log::info!("Data {} {} {}", is_door_open, is_powered, temperature);
             let ctx = service_provider.basic_context().unwrap();
 
             let now = Utc::now().naive_utc();
@@ -82,16 +83,24 @@ impl EmdDriver {
 
             let senosor_id = "STM32".to_string();
             let store_id = active_stores.store_ids().pop();
+            let sensor_temperature = match (is_door_open, is_powered) {
+                (false, false) => 0.0,
+                (true, false) => 10.0,
+                (false, true) => 100.0,
+                (true, true) => 110.0,
+            };
             if let Err(e) = SensorRowRepository::new(&ctx.connection).upsert_one(&SensorRow {
                 id: senosor_id.clone(),
                 name: "Example Sensor".to_string(),
                 serial: senosor_id.clone(),
                 location_id: None,
                 store_id: store_id.clone(),
-                battery_level: Some(if is_door_open_or_power_off { 0 } else { 100 }),
+                battery_level: Some(100),
+                temperature: sensor_temperature,
                 log_interval: Some(interval.as_secs() as i32),
                 is_active: true,
                 last_connection_datetime: Some(now),
+                r#type: SensorType::BlueMaestro,
             }) {
                 log::error!("Cannot upsert sensor {:?}", e);
                 continue;

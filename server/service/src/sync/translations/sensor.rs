@@ -52,6 +52,7 @@ pub struct LegacySensorRow {
     #[serde(rename = "lastConnectionTime")]
     #[serde(deserialize_with = "naive_time")]
     pub last_connection_time: NaiveTime,
+    pub temperature: f64,
 }
 
 pub(crate) struct SensorTranslation {}
@@ -85,6 +86,7 @@ impl SyncTranslation for SensorTranslation {
             is_active,
             last_connection_date,
             last_connection_time,
+            temperature,
         } = data;
 
         let last_connection_datetime = last_connection_date.map(|last_connection_date| {
@@ -109,6 +111,7 @@ impl SyncTranslation for SensorTranslation {
             is_active,
             last_connection_datetime,
             r#type,
+            temperature,
         };
 
         Ok(Some(IntegrationRecords::from_upsert(
@@ -136,6 +139,7 @@ impl SyncTranslation for SensorTranslation {
             is_active,
             last_connection_datetime,
             r#type,
+            temperature,
         } = SensorRowRepository::new(connection)
             .find_one_by_id(&changelog.record_id)?
             .ok_or(anyhow::Error::msg(format!(
@@ -168,6 +172,7 @@ impl SyncTranslation for SensorTranslation {
             is_active,
             last_connection_date,
             last_connection_time,
+            temperature,
         };
         Ok(Some(vec![RemoteSyncRecordV5::new_upsert(
             changelog,

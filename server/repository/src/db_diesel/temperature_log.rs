@@ -111,7 +111,7 @@ fn create_filtered_query(
     if let Some(f) = filter {
         let TemperatureLogFilter {
             id,
-            store_id,
+            store_id: _,
             datetime,
             sensor,
             location,
@@ -119,7 +119,7 @@ fn create_filtered_query(
         } = f;
 
         apply_equal_filter!(query, id, temperature_log_dsl::id);
-        apply_equal_filter!(query, store_id, temperature_log_dsl::store_id);
+        // apply_equal_filter!(query, store_id, temperature_log_dsl::store_id);
         apply_date_time_filter!(query, datetime, temperature_log_dsl::datetime);
 
         if sensor.is_some() {

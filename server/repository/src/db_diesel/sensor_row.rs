@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 table! {
     sensor (id) {
         id -> Text,
+        temperature -> Double,
         name -> Text,
         serial -> Text,
         location_id -> Nullable<Text>,
@@ -48,6 +49,7 @@ pub enum SensorType {
 #[table_name = "sensor"]
 pub struct SensorRow {
     pub id: String,
+    pub temperature: f64,
     pub name: String,
     pub serial: String,
     pub location_id: Option<String>,
@@ -55,6 +57,7 @@ pub struct SensorRow {
     pub battery_level: Option<i32>,
     pub log_interval: Option<i32>,
     pub is_active: bool,
+
     pub last_connection_datetime: Option<NaiveDateTime>,
     #[column_name = "type_"]
     pub r#type: SensorType,
@@ -73,6 +76,7 @@ impl Default for SensorRow {
             is_active: false,
             last_connection_datetime: None,
             r#type: SensorType::BlueMaestro,
+            temperature: Default::default(),
         }
     }
 }
