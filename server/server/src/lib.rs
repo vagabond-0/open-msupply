@@ -19,7 +19,7 @@ use repository::{get_storage_connection_manager, migrations::migrate};
 
 use service::{
     auth_data::AuthData,
-    emd_driver::{self, EmdDriver},
+    emd_driver::EmdDriver,
     processors::Processors,
     service_provider::ServiceProvider,
     settings::{is_develop, ServerSettings, Settings},
@@ -246,7 +246,9 @@ pub async fn start_server(
     );
 
     let service_provider_closure = service_provider.clone().into_inner();
-    let task = tokio::spawn(async move { EmdDriver::run(service_provider_closure).await });
+    let temp_dir = settings.server.base_dir.clone();
+    let task =
+        tokio::spawn(async move { EmdDriver::run(service_provider_closure, temp_dir).await });
 
     // ADD SYSTEM USER
     service_provider

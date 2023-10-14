@@ -13,6 +13,7 @@ interface TextWithLabelRowProps {
   labelWidth?: string;
   text: string;
   textProps?: TypographyProps;
+  sensorStyle?: boolean;
 }
 
 export const TextWithLabelRow: FC<TextWithLabelRowProps> = ({
@@ -21,17 +22,20 @@ export const TextWithLabelRow: FC<TextWithLabelRowProps> = ({
   labelWidth = '100px',
   text,
   textProps,
+  sensorStyle,
 }) => {
-  const { sx, ...labelPropsRest } = labelProps || {};
+  const { sx: labelSx, ...labelPropsRest } = labelProps || {};
   return (
-    <Box display="flex" alignItems="center" gap={1}>
-      <Box style={{ textAlign: 'end', whiteSpace: 'nowrap' }}>
+    <Box display="flex">
+      <Box
+        style={sensorStyle ? {} : { textAlign: 'end', whiteSpace: 'nowrap' }}
+      >
         <FormLabel
           sx={{
             fontWeight: 'bold',
             display: 'inline-block',
             width: labelWidth,
-            ...sx,
+            ...labelSx,
           }}
           {...labelPropsRest}
         >

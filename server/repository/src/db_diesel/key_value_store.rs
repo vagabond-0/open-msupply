@@ -27,6 +27,7 @@ pub enum KeyValueType {
 
     EmdIP,
     EmdIntervalSeconds,
+    EmdStoreId,
 
     SettingsSyncUrl,
     SettingsSyncUsername,

@@ -2891,6 +2891,7 @@ export type MutationsUpdateDocumentArgs = {
 
 export type MutationsUpdateEmdSettingsArgs = {
   input: EmdSettingsInput;
+  storeId: Scalars['String']['input'];
 };
 
 

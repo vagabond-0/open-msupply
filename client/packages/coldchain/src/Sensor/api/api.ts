@@ -1,6 +1,6 @@
 import { FilterBy, SortBy } from '@common/hooks';
 import { Sdk, SensorFragment } from './operations.generated';
-import { SensorSortFieldInput } from '@common/types';
+import { RecordPatch, SensorSortFieldInput } from '@common/types';
 
 export type ListParams = {
   first: number;
@@ -26,5 +26,19 @@ export const getSensorQueries = (sdk: Sdk, storeId: string) => ({
 
         return result?.sensors;
       },
+  },
+  update: async (patch: RecordPatch<SensorFragment>) => {
+    console.log('patch', patch);
+    const result = await sdk.updateSensor({
+      storeId,
+      input: {
+        id: patch.id,
+        isActive: patch.isActive,
+        name: patch.name,
+        locationId: patch?.location?.id,
+      },
+    });
+
+    return result?.updateSensor;
   },
 });

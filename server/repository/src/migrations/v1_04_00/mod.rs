@@ -18,7 +18,8 @@ impl Migration for V1_04_00 {
         sql!(
             r#"
 ALTER TYPE key_type ADD VALUE IF NOT EXISTS 'EMD_IP';
-ALTER TYPE key_type ADD VALUE IF NOT EXISTS 'EMD_INTERVAL_SECONDS';"#
+ALTER TYPE key_type ADD VALUE IF NOT EXISTS 'EMD_INTERVAL_SECONDS';
+ALTER TYPE key_type ADD VALUE IF NOT EXISTS 'EMD_STORE_ID';"#
         );
 
         Ok(())

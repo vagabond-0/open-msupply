@@ -1,0 +1,2 @@
+Sensor { sensor_type: Berlinger, serial: "null", name: "Q-tag Fridge-tag 2 L\\rVers", last_connected_timestamp: None, log_interval: None, breaches: None, configs: None, logs: None }
+

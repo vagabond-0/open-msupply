@@ -9,6 +9,7 @@ import {
   NumericTextInput,
   SaveIcon,
   Typography,
+  useAuthContext,
   useGql,
   useNotification,
 } from '@openmsupply-client/common';
@@ -18,6 +19,7 @@ import { getSdk } from '../api/operations.generated';
 const useEmdSettings = () => {
   const { success } = useNotification();
   const { client } = useGql();
+  const { storeId } = useAuthContext();
   const sdk = getSdk(client);
   const [ip, setIp] = useState('');
   const [intervalSeconds, setIntervalSeconds] = useState(10);
@@ -46,6 +48,7 @@ const useEmdSettings = () => {
     setIsLoading(true);
     try {
       await sdk.updateEmdSettings({
+        storeId,
         input: {
           ip,
           intervalSeconds,

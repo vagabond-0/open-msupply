@@ -294,9 +294,10 @@ impl GeneralMutations {
     pub async fn update_emd_settings(
         &self,
         ctx: &Context<'_>,
+        store_id: String,
         input: EmdSettingsInput,
     ) -> Result<EmdSettingsNode> {
-        update_emd_settings(ctx, input).await
+        update_emd_settings(ctx, &store_id, input).await
     }
 
     // Only available for graphql introspection, error will be thrown after PreInitialisation state

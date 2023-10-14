@@ -25,6 +25,7 @@ export type GetEmdSettingsQuery = { __typename: 'Queries', emdSettings: { __type
 
 export type UpdateEmdSettingsMutationVariables = Types.Exact<{
   input?: Types.InputMaybe<Types.EmdSettingsInput>;
+  storeId: Types.Scalars['String']['input'];
 }>;
 
 
@@ -70,8 +71,8 @@ export const GetEmdSettingsDocument = gql`
 }
     `;
 export const UpdateEmdSettingsDocument = gql`
-    mutation updateEmdSettings($input: EmdSettingsInput) {
-  updateEmdSettings(input: $input) {
+    mutation updateEmdSettings($input: EmdSettingsInput, $storeId: String!) {
+  updateEmdSettings(input: $input, storeId: $storeId) {
     ip
     intervalSeconds
   }
@@ -94,7 +95,7 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     getEmdSettings(variables?: GetEmdSettingsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetEmdSettingsQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetEmdSettingsQuery>(GetEmdSettingsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'getEmdSettings', 'query');
     },
-    updateEmdSettings(variables?: UpdateEmdSettingsMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateEmdSettingsMutation> {
+    updateEmdSettings(variables: UpdateEmdSettingsMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateEmdSettingsMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<UpdateEmdSettingsMutation>(UpdateEmdSettingsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'updateEmdSettings', 'mutation');
     }
   };
@@ -156,7 +157,7 @@ export const mockGetEmdSettingsQuery = (resolver: ResponseResolver<GraphQLReques
  * @see https://mswjs.io/docs/basics/response-resolver
  * @example
  * mockUpdateEmdSettingsMutation((req, res, ctx) => {
- *   const { input } = req.variables;
+ *   const { input, storeId } = req.variables;
  *   return res(
  *     ctx.data({ updateEmdSettings })
  *   )

@@ -2,7 +2,7 @@ use crate::sync::{
     api::RemoteSyncRecordV5,
     sync_serde::{date_to_isostring, empty_str_as_option_string, naive_time},
 };
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::{Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 
 use repository::{
     ChangelogRow, ChangelogTableName, StorageConnection, SyncBufferRow, TemperatureLogRow,
@@ -122,8 +122,14 @@ impl SyncTranslation for TemperatureLogTranslation {
                 changelog.record_id
             )))?;
 
+        log::info!("before conversion {}", datetime);
+
+        let utc = Local.from_utc_datetime(&datetime);
+        let datetime = utc.naive_local();
         let date = datetime.date();
         let time = datetime.time();
+
+        log::info!("after conversion {}", datetime);
 
         let legacy_row = LegacyTemperatureLogRow {
             id,

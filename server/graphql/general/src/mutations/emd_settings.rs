@@ -20,6 +20,7 @@ pub struct EmdSettingsInput {
 
 pub async fn update_emd_settings(
     ctx: &Context<'_>,
+    store_id: &str,
     input: EmdSettingsInput,
 ) -> Result<EmdSettingsNode> {
     validate_auth(
@@ -57,6 +58,7 @@ pub async fn update_emd_settings(
     let repo = KeyValueStoreRepository::new(&service_context.connection);
 
     repo.set_string(KeyValueType::EmdIP, Some(input.ip))?;
+    repo.set_string(KeyValueType::EmdStoreId, Some(store_id.to_string()))?;
     repo.set_i32(
         KeyValueType::EmdIntervalSeconds,
         Some(input.interval_seconds),

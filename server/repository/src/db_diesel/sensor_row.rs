@@ -121,6 +121,8 @@ impl<'a> SensorRowRepository<'a> {
         Ok(result)
     }
 
+
+
     pub fn find_many_by_id(&self, ids: &[String]) -> Result<Vec<SensorRow>, RepositoryError> {
         Ok(sensor_dsl::sensor
             .filter(sensor_dsl::id.eq_any(ids))

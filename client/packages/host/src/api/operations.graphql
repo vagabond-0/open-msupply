@@ -33,8 +33,8 @@ query getEmdSettings {
   }
 }
 
-mutation updateEmdSettings($input: EmdSettingsInput) {
-  updateEmdSettings(input: $input) {
+mutation updateEmdSettings($input: EmdSettingsInput, $storeId: String!) {
+  updateEmdSettings(input: $input, storeId: $storeId) {
     ip
     intervalSeconds
   }
