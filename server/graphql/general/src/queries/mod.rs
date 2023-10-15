@@ -44,6 +44,8 @@ pub mod last_successful_user_sync;
 pub use self::last_successful_user_sync::*;
 pub mod emd_settings;
 pub use self::emd_settings::*;
+pub mod cold_chain_alarms;
+pub use self::cold_chain_alarms::*;
 
 #[cfg(test)]
 mod tests;

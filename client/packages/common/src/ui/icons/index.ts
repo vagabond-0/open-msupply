@@ -60,6 +60,7 @@ export { UnhappyMan } from './UnhappyMan';
 export { UserIcon } from './User';
 export { XCircleIcon } from './XCircle';
 export { ZapIcon } from './Zap';
+export { AlarmIcon } from './Alarm';
 
 type Color =
   | 'inherit'

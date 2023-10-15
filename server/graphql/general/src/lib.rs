@@ -192,6 +192,9 @@ impl GeneralQueries {
         emd_settings::emd_settings(ctx)
     }
 
+    pub async fn cold_chain_alarms(&self, ctx: &Context<'_>) -> Result<Vec<AlarmNode>> {
+        cold_chain_alarms::cold_chain_alarms(ctx)
+    }
     pub async fn display_settings(
         &self,
         ctx: &Context<'_>,

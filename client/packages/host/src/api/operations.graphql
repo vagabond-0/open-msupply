@@ -39,3 +39,20 @@ mutation updateEmdSettings($input: EmdSettingsInput, $storeId: String!) {
     intervalSeconds
   }
 }
+
+fragment Alarm on AlarmNode {
+  sensor {
+    location {
+      name
+    }
+    name
+  }
+  alarmVariant
+  temperature
+}
+
+query getColdChainAlarms {
+  coldChainAlarms {
+    ...Alarm
+  }
+}

@@ -2,7 +2,7 @@ use crate::sync::{
     api::RemoteSyncRecordV5,
     sync_serde::{date_to_isostring, empty_str_as_option_string, naive_time},
 };
-use chrono::{Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
+use chrono::{Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 
 use repository::{
     ChangelogRow, ChangelogTableName, StorageConnection, SyncBufferRow, TemperatureLogRow,

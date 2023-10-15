@@ -173,6 +173,19 @@ export type AdjustmentReasonNotValid = InsertStocktakeLineErrorInterface & Updat
   description: Scalars['String']['output'];
 };
 
+export type AlarmNode = {
+  __typename: 'AlarmNode';
+  alarmVariant: AlarmVariant;
+  sensor: SensorNode;
+  temperature?: Maybe<Scalars['Float']['output']>;
+};
+
+export enum AlarmVariant {
+  DoorOpen = 'DOOR_OPEN',
+  PowerOff = 'POWER_OFF',
+  TemperatureExcursion = 'TEMPERATURE_EXCURSION'
+}
+
 export type AllocateOutboundShipmentUnallocatedLineError = {
   __typename: 'AllocateOutboundShipmentUnallocatedLineError';
   error: AllocateOutboundShipmentUnallocatedLineErrorInterface;
@@ -3567,6 +3580,7 @@ export type Queries = {
   barcodeByGtin: BarcodeResponse;
   centralPatientSearch: CentralPatientSearchResponse;
   clinicians: CliniciansResponse;
+  coldChainAlarms: Array<AlarmNode>;
   contactTraces: ContactTraceResponse;
   displaySettings: DisplaySettingsNode;
   document?: Maybe<DocumentNode>;

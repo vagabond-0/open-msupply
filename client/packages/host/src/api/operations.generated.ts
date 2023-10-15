@@ -31,7 +31,25 @@ export type UpdateEmdSettingsMutationVariables = Types.Exact<{
 
 export type UpdateEmdSettingsMutation = { __typename: 'Mutations', updateEmdSettings: { __typename: 'EmdSettingsNode', ip: string, intervalSeconds: number } };
 
+export type AlarmFragment = { __typename: 'AlarmNode', alarmVariant: Types.AlarmVariant, temperature?: number | null, sensor: { __typename: 'SensorNode', name: string, location?: { __typename: 'LocationNode', name: string } | null } };
 
+export type GetColdChainAlarmsQueryVariables = Types.Exact<{ [key: string]: never; }>;
+
+
+export type GetColdChainAlarmsQuery = { __typename: 'Queries', coldChainAlarms: Array<{ __typename: 'AlarmNode', alarmVariant: Types.AlarmVariant, temperature?: number | null, sensor: { __typename: 'SensorNode', name: string, location?: { __typename: 'LocationNode', name: string } | null } }> };
+
+export const AlarmFragmentDoc = gql`
+    fragment Alarm on AlarmNode {
+  sensor {
+    location {
+      name
+    }
+    name
+  }
+  alarmVariant
+  temperature
+}
+    `;
 export const DisplaySettingsDocument = gql`
     query displaySettings($input: DisplaySettingsHash!) {
   displaySettings(input: $input) {
@@ -78,6 +96,13 @@ export const UpdateEmdSettingsDocument = gql`
   }
 }
     `;
+export const GetColdChainAlarmsDocument = gql`
+    query getColdChainAlarms {
+  coldChainAlarms {
+    ...Alarm
+  }
+}
+    ${AlarmFragmentDoc}`;
 
 export type SdkFunctionWrapper = <T>(action: (requestHeaders?:Record<string, string>) => Promise<T>, operationName: string, operationType?: string) => Promise<T>;
 
@@ -97,6 +122,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     updateEmdSettings(variables: UpdateEmdSettingsMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateEmdSettingsMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<UpdateEmdSettingsMutation>(UpdateEmdSettingsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'updateEmdSettings', 'mutation');
+    },
+    getColdChainAlarms(variables?: GetColdChainAlarmsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetColdChainAlarmsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetColdChainAlarmsQuery>(GetColdChainAlarmsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'getColdChainAlarms', 'query');
     }
   };
 }
@@ -166,5 +194,21 @@ export const mockGetEmdSettingsQuery = (resolver: ResponseResolver<GraphQLReques
 export const mockUpdateEmdSettingsMutation = (resolver: ResponseResolver<GraphQLRequest<UpdateEmdSettingsMutationVariables>, GraphQLContext<UpdateEmdSettingsMutation>, any>) =>
   graphql.mutation<UpdateEmdSettingsMutation, UpdateEmdSettingsMutationVariables>(
     'updateEmdSettings',
+    resolver
+  )
+
+/**
+ * @param resolver a function that accepts a captured request and may return a mocked response.
+ * @see https://mswjs.io/docs/basics/response-resolver
+ * @example
+ * mockGetColdChainAlarmsQuery((req, res, ctx) => {
+ *   return res(
+ *     ctx.data({ coldChainAlarms })
+ *   )
+ * })
+ */
+export const mockGetColdChainAlarmsQuery = (resolver: ResponseResolver<GraphQLRequest<GetColdChainAlarmsQueryVariables>, GraphQLContext<GetColdChainAlarmsQuery>, any>) =>
+  graphql.query<GetColdChainAlarmsQuery, GetColdChainAlarmsQueryVariables>(
+    'getColdChainAlarms',
     resolver
   )
