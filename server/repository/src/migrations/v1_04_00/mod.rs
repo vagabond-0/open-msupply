@@ -2,6 +2,7 @@ use super::{version::Version, Migration};
 
 use crate::StorageConnection;
 pub(crate) struct V1_04_00;
+mod activity_log;
 mod contact_trace;
 mod date_of_death;
 
@@ -22,6 +23,7 @@ ALTER TYPE key_type ADD VALUE IF NOT EXISTS 'EMD_INTERVAL_SECONDS';
 ALTER TYPE key_type ADD VALUE IF NOT EXISTS 'EMD_STORE_ID';"#
         );
 
+        activity_log::migrate(connection)?;
         Ok(())
     }
 }
