@@ -235,161 +235,161 @@ export const useStocktakeColumns = ({
           },
         },
       ],
-      {
-        key: 'snapshotNumPacks',
-        label: 'label.snapshot-num-of-packs',
-        description: 'description.snapshot-num-of-packs',
-        align: ColumnAlign.Right,
-        Cell: PositiveNumberCell,
-        getIsError: row =>
-          getLinesFromRow(row).some(
-            r => getError(r)?.__typename === 'SnapshotCountCurrentCountMismatch'
-          ),
-        getSortValue: row => {
-          if ('lines' in row) {
-            const { lines } = row;
-            return (
-              lines.reduce(
-                (total, line) => total + line.snapshotNumberOfPacks,
-                0
-              ) ?? 0
-            ).toString();
-          } else {
-            return row.snapshotNumberOfPacks ?? '';
-          }
-        },
-        accessor: ({ rowData }) => {
-          if ('lines' in rowData) {
-            const { lines } = rowData;
-            return (
-              lines.reduce(
-                (total, line) => total + line.snapshotNumberOfPacks,
-                0
-              ) ?? 0
-            ).toString();
-          } else {
-            return rowData.snapshotNumberOfPacks;
-          }
-        },
-      },
-      {
-        key: 'countedNumPacks',
-        label: 'label.counted-num-of-packs',
-        description: 'description.counted-num-of-packs',
-        align: ColumnAlign.Right,
-        Cell: PositiveNumberCell,
-        getIsError: row =>
-          getLinesFromRow(row).some(
-            r => getError(r)?.__typename === 'SnapshotCountCurrentCountMismatch'
-          ),
-        getSortValue: row => {
-          if ('lines' in row) {
-            const { lines } = row;
-            return (
-              lines.reduce(
-                (total, line) => total + (line.countedNumberOfPacks ?? 0),
-                0
-              ) ?? 0
-            ).toString();
-          } else {
-            return row.countedNumberOfPacks ?? '';
-          }
-        },
-        accessor: ({ rowData }) => {
-          if ('lines' in rowData) {
-            const { lines } = rowData;
-            return (
-              lines.reduce(
-                (total, line) => total + (line.countedNumberOfPacks ?? 0),
-                0
-              ) ?? 0
-            ).toString();
-          } else {
-            return rowData.countedNumberOfPacks;
-          }
-        },
-      },
-      {
-        key: 'difference',
-        label: 'label.difference',
-        align: ColumnAlign.Right,
-        getSortValue: row => {
-          if ('lines' in row) {
-            const { lines } = row;
-            const total =
-              lines.reduce(
-                (total, line) =>
-                  total +
-                  (line.snapshotNumberOfPacks -
-                    (line.countedNumberOfPacks ?? line.snapshotNumberOfPacks)),
-                0
-              ) ?? 0;
-            return (total < 0 ? Math.abs(total) : -total).toString();
-          } else {
-            return (
-              row.snapshotNumberOfPacks -
-                (row.countedNumberOfPacks ?? row.snapshotNumberOfPacks) ?? ''
-            );
-          }
-        },
-        accessor: ({ rowData }) => {
-          if ('lines' in rowData) {
-            const { lines } = rowData;
-            const total =
-              lines.reduce(
-                (total, line) =>
-                  total +
-                  (line.snapshotNumberOfPacks -
-                    (line.countedNumberOfPacks ?? line.snapshotNumberOfPacks)),
-                0
-              ) ?? 0;
-            return (total < 0 ? Math.abs(total) : -total).toString();
-          } else {
-            return (
-              (rowData.countedNumberOfPacks ?? rowData.snapshotNumberOfPacks) -
-              rowData.snapshotNumberOfPacks
-            );
-          }
-        },
-      },
-      {
-        key: 'inventoryAdjustmentReason',
-        label: 'label.reason',
-        accessor: ({ rowData }) => getStocktakeReasons(rowData),
-        getSortValue: rowData => getStocktakeReasons(rowData),
-      },
-      {
-        key: 'comment',
-        label: 'label.stocktake-comment',
-        getSortValue: row => {
-          if ('lines' in row) {
-            const { lines } = row;
-            return (
-              ArrayUtils.ifTheSameElseDefault(
-                lines,
-                'comment',
-                t('multiple')
-              ) ?? ''
-            );
-          } else {
-            return row.comment ?? '';
-          }
-        },
-        accessor: ({ rowData }) => {
-          if ('lines' in rowData) {
-            const { lines } = rowData;
-            return ArrayUtils.ifTheSameElseDefault(
-              lines,
-              'comment',
-              t('multiple')
-            );
-          } else {
-            return rowData.comment;
-          }
-        },
-      },
-      expandColumn,
-      GenericColumnKey.Selection,
+      // {
+      //   key: 'snapshotNumPacks',
+      //   label: 'label.snapshot-num-of-packs',
+      //   description: 'description.snapshot-num-of-packs',
+      //   align: ColumnAlign.Right,
+      //   Cell: PositiveNumberCell,
+      //   getIsError: row =>
+      //     getLinesFromRow(row).some(
+      //       r => getError(r)?.__typename === 'SnapshotCountCurrentCountMismatch'
+      //     ),
+      //   getSortValue: row => {
+      //     if ('lines' in row) {
+      //       const { lines } = row;
+      //       return (
+      //         lines.reduce(
+      //           (total, line) => total + line.snapshotNumberOfPacks,
+      //           0
+      //         ) ?? 0
+      //       ).toString();
+      //     } else {
+      //       return row.snapshotNumberOfPacks ?? '';
+      //     }
+      //   },
+      //   accessor: ({ rowData }) => {
+      //     if ('lines' in rowData) {
+      //       const { lines } = rowData;
+      //       return (
+      //         lines.reduce(
+      //           (total, line) => total + line.snapshotNumberOfPacks,
+      //           0
+      //         ) ?? 0
+      //       ).toString();
+      //     } else {
+      //       return rowData.snapshotNumberOfPacks;
+      //     }
+      //   },
+      // },
+      // {
+      //   key: 'countedNumPacks',
+      //   label: 'label.counted-num-of-packs',
+      //   description: 'description.counted-num-of-packs',
+      //   align: ColumnAlign.Right,
+      //   Cell: PositiveNumberCell,
+      //   getIsError: row =>
+      //     getLinesFromRow(row).some(
+      //       r => getError(r)?.__typename === 'SnapshotCountCurrentCountMismatch'
+      //     ),
+      //   getSortValue: row => {
+      //     if ('lines' in row) {
+      //       const { lines } = row;
+      //       return (
+      //         lines.reduce(
+      //           (total, line) => total + (line.countedNumberOfPacks ?? 0),
+      //           0
+      //         ) ?? 0
+      //       ).toString();
+      //     } else {
+      //       return row.countedNumberOfPacks ?? '';
+      //     }
+      //   },
+      //   accessor: ({ rowData }) => {
+      //     if ('lines' in rowData) {
+      //       const { lines } = rowData;
+      //       return (
+      //         lines.reduce(
+      //           (total, line) => total + (line.countedNumberOfPacks ?? 0),
+      //           0
+      //         ) ?? 0
+      //       ).toString();
+      //     } else {
+      //       return rowData.countedNumberOfPacks;
+      //     }
+      //   },
+      // },
+      // {
+      //   key: 'difference',
+      //   label: 'label.difference',
+      //   align: ColumnAlign.Right,
+      //   getSortValue: row => {
+      //     if ('lines' in row) {
+      //       const { lines } = row;
+      //       const total =
+      //         lines.reduce(
+      //           (total, line) =>
+      //             total +
+      //             (line.snapshotNumberOfPacks -
+      //               (line.countedNumberOfPacks ?? line.snapshotNumberOfPacks)),
+      //           0
+      //         ) ?? 0;
+      //       return (total < 0 ? Math.abs(total) : -total).toString();
+      //     } else {
+      //       return (
+      //         row.snapshotNumberOfPacks -
+      //           (row.countedNumberOfPacks ?? row.snapshotNumberOfPacks) ?? ''
+      //       );
+      //     }
+      //   },
+      //   accessor: ({ rowData }) => {
+      //     if ('lines' in rowData) {
+      //       const { lines } = rowData;
+      //       const total =
+      //         lines.reduce(
+      //           (total, line) =>
+      //             total +
+      //             (line.snapshotNumberOfPacks -
+      //               (line.countedNumberOfPacks ?? line.snapshotNumberOfPacks)),
+      //           0
+      //         ) ?? 0;
+      //       return (total < 0 ? Math.abs(total) : -total).toString();
+      //     } else {
+      //       return (
+      //         (rowData.countedNumberOfPacks ?? rowData.snapshotNumberOfPacks) -
+      //         rowData.snapshotNumberOfPacks
+      //       );
+      //     }
+      //   },
+      // },
+      // // {
+      // //   key: 'inventoryAdjustmentReason',
+      // //   label: 'label.reason',
+      // //   accessor: ({ rowData }) => getStocktakeReasons(rowData),
+      // //   getSortValue: rowData => getStocktakeReasons(rowData),
+      // // },
+      // {
+      //   key: 'comment',
+      //   label: 'label.stocktake-comment',
+      //   getSortValue: row => {
+      //     if ('lines' in row) {
+      //       const { lines } = row;
+      //       return (
+      //         ArrayUtils.ifTheSameElseDefault(
+      //           lines,
+      //           'comment',
+      //           t('multiple')
+      //         ) ?? ''
+      //       );
+      //     } else {
+      //       return row.comment ?? '';
+      //     }
+      //   },
+      //   accessor: ({ rowData }) => {
+      //     if ('lines' in rowData) {
+      //       const { lines } = rowData;
+      //       return ArrayUtils.ifTheSameElseDefault(
+      //         lines,
+      //         'comment',
+      //         t('multiple')
+      //       );
+      //     } else {
+      //       return rowData.comment;
+      //     }
+      //   },
+      // },
+      // expandColumn,
+      // GenericColumnKey.Selection,
     ],
     { sortBy, onChangeSortBy },
     [sortBy, onChangeSortBy]

@@ -94,13 +94,13 @@ export const ContentArea: FC<ContentAreaProps> = ({
   const columns = useStocktakeColumns({ onChangeSortBy, sortBy });
   const isDisabled = useStocktake.utils.isDisabled();
 
-  useHighlightUncountedRows(rows);
+  // useHighlightUncountedRows(rows);
 
   return (
     <Box flexDirection="column" flex={1}>
       <DataTable<StocktakeSummaryItem | StocktakeLineFragment>
         onRowClick={onRowClick}
-        ExpandContent={Expando}
+        // ExpandContent={Expando}
         isRowAnimated={true}
         columns={columns}
         data={rows}
