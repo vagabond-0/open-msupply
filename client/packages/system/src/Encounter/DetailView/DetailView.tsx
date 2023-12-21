@@ -15,6 +15,8 @@ import {
   DialogButton,
   ButtonWithIcon,
   SaveIcon,
+  BasicSpinner,
+  Typography,
 } from '@openmsupply-client/common';
 import {
   useEncounter,
@@ -23,6 +25,7 @@ import {
   useDocumentDataAccessor,
   EncounterSchema,
   JsonData,
+  SavedDocument,
 } from '@openmsupply-client/programs';
 import { AppRoute } from '@openmsupply-client/config';
 import { Toolbar } from './Toolbar';
@@ -66,7 +69,7 @@ const useSaveWithStatus = (
     if (!!saveStatus && saveStatus === encounterData?.status) {
       saveData();
     }
-  }, [saveStatus, encounterData?.status]);
+  }, [saveStatus, encounterData?.status, saveData]);
 
   return (status: EncounterNodeStatus | undefined) => {
     if (status === undefined) {
@@ -132,6 +135,101 @@ const useSaveWithStatusChangeModal = (
   };
 };
 
+type DeletionDialogProps = {
+  open: boolean;
+  data: JsonData;
+  updateEncounter: (patch: Partial<EncounterFragment>) => void;
+  saveData: (isDeletion?: boolean) => Promise<SavedDocument | undefined>;
+  onClose: () => void;
+};
+
+const DeletionDialog: FC<DeletionDialogProps> = ({
+  open,
+  data,
+  updateEncounter,
+  saveData,
+  onClose,
+}: DeletionDialogProps) => {
+  const t = useTranslation('dispensary');
+  const navigate = useNavigate();
+
+  const {
+    hideDialog: hideDeletionDialog,
+    Modal,
+    showDialog: showDeletionDialog,
+  } = useDialog({ onClose });
+  useEffect(() => {
+    if (open) {
+      showDeletionDialog();
+    }
+  }, [open]);
+  const [deletionConfirmed, setDeletionConfirmed] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    if (
+      !deletionConfirmed ||
+      (data as Record<string, JsonData>)['status'] !==
+        EncounterNodeStatus.Deleted
+    ) {
+      return;
+    }
+    if (deleting) {
+      return;
+    }
+    setDeleting(true);
+    const del = async () => {
+      try {
+        const result = await saveData(true);
+        if (!result) return;
+
+        // allow the is dirty flag to settle
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } finally {
+        hideDeletionDialog();
+      }
+      navigate(-1);
+    };
+    del();
+  }, [
+    deletionConfirmed,
+    deleting,
+    data,
+    navigate,
+    saveData,
+    hideDeletionDialog,
+  ]);
+
+  return (
+    <Modal
+      title={t('title.confirm-delete-encounter')}
+      cancelButton={
+        <DialogButton
+          disabled={deletionConfirmed}
+          variant="cancel"
+          onClick={hideDeletionDialog}
+        />
+      }
+      okButton={
+        <DialogButton
+          disabled={deletionConfirmed}
+          variant="ok"
+          onClick={async () => {
+            updateEncounter({ status: EncounterNodeStatus.Deleted });
+            setDeletionConfirmed(true);
+          }}
+        />
+      }
+    >
+      {deleting ? (
+        <BasicSpinner />
+      ) : (
+        <Typography>{t('message.confirm-delete-encounter')}</Typography>
+      )}
+    </Modal>
+  );
+};
+
 export const DetailView: FC = () => {
   const t = useTranslation('dispensary');
   const id = useEncounter.utils.idFromUrl();
@@ -142,7 +240,6 @@ export const DetailView: FC = () => {
   const [logicalStatus, setLogicalStatus] = useState<string | undefined>(
     undefined
   );
-  const [deleteRequest, setDeleteRequest] = useState(false);
 
   const {
     data: encounter,
@@ -185,26 +282,7 @@ export const DetailView: FC = () => {
     [data, setData]
   );
 
-  const onDelete = () => {
-    updateEncounter({ status: EncounterNodeStatus.Deleted });
-    setDeleteRequest(true);
-  };
-  useEffect(() => {
-    if (!deleteRequest) return;
-    if (
-      (data as Record<string, JsonData>)['status'] ===
-      EncounterNodeStatus.Deleted
-    ) {
-      (async () => {
-        const result = await saveData(true);
-        if (!result) return;
-
-        // allow the is dirty flag to settle
-        await new Promise(resolve => setTimeout(resolve, 100));
-        navigate(-1);
-      })();
-    }
-  }, [deleteRequest, data]);
+  const [deleteRequested, setDeleteRequested] = useState(false);
 
   const { showDialog: showSaveAsVisitedDialog, SaveAsVisitedModal } =
     useSaveWithStatusChangeModal(
@@ -257,7 +335,7 @@ export const DetailView: FC = () => {
         <Toolbar
           onChange={updateEncounter}
           encounter={encounter}
-          onDelete={onDelete}
+          onDelete={() => setDeleteRequested(true)}
         />
       )}
       {encounter ? (
@@ -293,6 +371,13 @@ export const DetailView: FC = () => {
         isDisabled={!isDirty || !!validationError}
         encounter={data as EncounterFragment}
       />
+      <DeletionDialog
+        open={deleteRequested}
+        data={data}
+        saveData={saveData}
+        updateEncounter={updateEncounter}
+        onClose={() => setDeleteRequested(false)}
+      ></DeletionDialog>
     </React.Suspense>
   );
 };

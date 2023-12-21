@@ -31,7 +31,7 @@ import {
   ClinicianSearchInput,
 } from '../../Clinician';
 import { Clinician } from '../../Clinician/utils';
-import { IconButton, Select, useConfirmationModal } from '@common/components';
+import { IconButton, Select } from '@common/components';
 import { encounterStatusTranslation } from '../utils';
 
 const encounterStatusOption = (
@@ -96,20 +96,6 @@ export const Toolbar: FC<ToolbarProps> = ({
     });
   }, [encounter]);
 
-  const getDeleteConfirmation = useConfirmationModal({
-    message: t('message.confirm-delete-encounter'),
-    title: t('title.confirm-delete-encounter'),
-  });
-
-  const onDeleteClick = () => {
-    getDeleteConfirmation({
-      onConfirm: () => {
-        setStatus(EncounterNodeStatus.Deleted);
-        onDelete();
-      },
-    });
-  };
-
   const { patient } = encounter;
 
   const statusOptions = [
@@ -120,6 +106,7 @@ export const Toolbar: FC<ToolbarProps> = ({
   if (status === EncounterNodeStatus.Deleted) {
     statusOptions.push(encounterStatusOption(EncounterNodeStatus.Deleted, t));
   }
+
   return (
     <AppBarContentPortal sx={{ display: 'flex', flex: 1, marginBottom: 1 }}>
       <Grid
@@ -187,7 +174,7 @@ export const Toolbar: FC<ToolbarProps> = ({
 
               <IconButton
                 icon={<DeleteIcon />}
-                onClick={onDeleteClick}
+                onClick={onDelete}
                 label={t('label.delete')}
               />
             </Box>
