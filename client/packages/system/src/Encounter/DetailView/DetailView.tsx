@@ -22,6 +22,7 @@ import {
   EncounterFragment,
   useDocumentDataAccessor,
   EncounterSchema,
+  JsonData,
 } from '@openmsupply-client/programs';
 import { AppRoute } from '@openmsupply-client/config';
 import { Toolbar } from './Toolbar';
@@ -29,6 +30,7 @@ import { Footer } from './Footer';
 import { SidePanel } from './SidePanel';
 import { AppBarButtons } from './AppBarButtons';
 import { getLogicalStatus } from '../utils';
+import { PatientTabValue } from '../../Patient/PatientView/PatientView';
 
 const getPatientBreadcrumbSuffix = (
   encounter: EncounterFragment,
@@ -49,7 +51,7 @@ const getPatientBreadcrumbSuffix = (
 };
 
 /**
-+ * Updates the status and once the status has been update saves the encounter
++ * Updates the status and once the status has been updated saves the encounter
 + */
 const useSaveWithStatus = (
   saveData: () => void,
@@ -140,6 +142,7 @@ export const DetailView: FC = () => {
   const [logicalStatus, setLogicalStatus] = useState<string | undefined>(
     undefined
   );
+  const [deleteRequest, setDeleteRequest] = useState(false);
 
   const {
     data: encounter,
@@ -163,6 +166,7 @@ export const DetailView: FC = () => {
     setData,
     saveData,
     isDirty,
+    isSaving,
     validationError,
     revert,
   } = useJsonForms(
@@ -181,6 +185,27 @@ export const DetailView: FC = () => {
       }),
     [data, setData]
   );
+
+  const onDelete = () => {
+    updateEncounter({ status: EncounterNodeStatus.Deleted });
+    setDeleteRequest(true);
+  };
+  useEffect(() => {
+    if (!deleteRequest) return;
+    if (
+      (data as Record<string, JsonData>)['status'] ===
+      EncounterNodeStatus.Deleted
+    ) {
+      (async () => {
+        const result = await saveData(true);
+        if (!result) return;
+
+        // allow the is dirty flag to settle
+        await new Promise(resolve => setTimeout(resolve, 100));
+        navigate(-1);
+      })();
+    }
+  }, [deleteRequest, data]);
 
   const { showDialog: showSaveAsVisitedDialog, SaveAsVisitedModal } =
     useSaveWithStatusChangeModal(
@@ -201,7 +226,9 @@ export const DetailView: FC = () => {
             to={RouteBuilder.create(AppRoute.Dispensary)
               .addPart(AppRoute.Patients)
               .addPart(encounter.patient.id)
-              .addQuery({ tab: 'Encounters' })
+              .addQuery({
+                tab: PatientTabValue.Encounters,
+              })
               .build()}
           >
             {getPatientBreadcrumbSuffix(encounter, getLocalisedFullName)}
@@ -228,7 +255,11 @@ export const DetailView: FC = () => {
       <link rel="stylesheet" href="/medical-icons.css" media="all"></link>
       <AppBarButtons logicalStatus={logicalStatus} />
       {encounter && (
-        <Toolbar onChange={updateEncounter} encounter={encounter} />
+        <Toolbar
+          onChange={updateEncounter}
+          encounter={encounter}
+          onDelete={onDelete}
+        />
       )}
       {encounter ? (
         JsonForm
@@ -260,6 +291,7 @@ export const DetailView: FC = () => {
           }
         }}
         onCancel={revert}
+        isSaving={isSaving}
         isDisabled={!isDirty || !!validationError}
         encounter={data as EncounterFragment}
       />

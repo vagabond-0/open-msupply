@@ -1,4 +1,4 @@
-import React, { FC, useState } from 'react';
+import React, { FC, useCallback, useState } from 'react';
 import {
   and,
   Categorization,
@@ -225,7 +225,10 @@ const UIComponent: FC<LayoutProps & AjvProps> = ({
     cells,
   };
 
-  const onClose = () => setActiveCategory(undefined);
+  const onClose = useCallback(
+    () => setActiveCategory(undefined),
+    [setActiveCategory]
+  );
 
   return (
     <Grid
@@ -239,7 +242,7 @@ const UIComponent: FC<LayoutProps & AjvProps> = ({
       padding={2}
     >
       {categories.map((category: Category, idx: number) => (
-        <Grid item key={category.label} display="inline-flex">
+        <Grid item key={category.label}>
           <Button
             variant="outlined"
             startIcon={<Icon className={`${category.options?.['icon']}`} />}

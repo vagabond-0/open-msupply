@@ -23,6 +23,7 @@ use crate::{
     master_list::{MasterListService, MasterListServiceTrait},
     missing_program::create_missing_master_list_and_program,
     name::get_names,
+    plugin_data::{PluginDataService, PluginDataServiceTrait},
     processors::ProcessorsTrigger,
     programs::{
         contact_trace::{ContactTraceService, ContactTraceServiceTrait},
@@ -35,6 +36,7 @@ use crate::{
     report::report_service::{ReportService, ReportServiceTrait},
     requisition::{RequisitionService, RequisitionServiceTrait},
     requisition_line::{RequisitionLineService, RequisitionLineServiceTrait},
+    sensor::{SensorService, SensorServiceTrait},
     settings_service::{SettingsService, SettingsServiceTrait},
     stock_line::{StockLineService, StockLineServiceTrait},
     stocktake::{StocktakeService, StocktakeServiceTrait},
@@ -46,6 +48,10 @@ use crate::{
         synchroniser_driver::{SiteIsInitialisedTrigger, SyncTrigger},
     },
     system_user::create_system_user,
+    temperature_breach::{TemperatureBreachService, TemperatureBreachServiceTrait},
+    temperature_chart::{TemperatureChartService, TemperatureChartServiceTrait},
+    temperature_excursion::{TemperatureExcursionService, TemperatureExcursionServiceTrait},
+    temperature_log::{TemperatureLogService, TemperatureLogServiceTrait},
     ListError, ListResult,
 };
 use repository::{
@@ -58,6 +64,11 @@ pub struct ServiceProvider {
     pub validation_service: Box<dyn AuthServiceTrait>,
 
     pub location_service: Box<dyn LocationServiceTrait>,
+    pub sensor_service: Box<dyn SensorServiceTrait>,
+    pub temperature_breach_service: Box<dyn TemperatureBreachServiceTrait>,
+    pub temperature_excursion_service: Box<dyn TemperatureExcursionServiceTrait>,
+    pub temperature_log_service: Box<dyn TemperatureLogServiceTrait>,
+    pub temperature_chart_service: Box<dyn TemperatureChartServiceTrait>,
     pub invoice_service: Box<dyn InvoiceServiceTrait>,
     pub master_list_service: Box<dyn MasterListServiceTrait>,
     pub stocktake_service: Box<dyn StocktakeServiceTrait>,
@@ -106,6 +117,8 @@ pub struct ServiceProvider {
     pub barcode_service: Box<dyn BarcodeServiceTrait>,
     // Log
     pub log_service: Box<dyn LogServiceTrait>,
+    // Plugin
+    pub plugin_data_service: Box<dyn PluginDataServiceTrait>,
 }
 
 pub struct ServiceContext {
@@ -140,6 +153,10 @@ impl ServiceProvider {
             connection_manager: connection_manager.clone(),
             validation_service: Box::new(AuthService::new()),
             location_service: Box::new(LocationService {}),
+            sensor_service: Box::new(SensorService {}),
+            temperature_breach_service: Box::new(TemperatureBreachService {}),
+            temperature_log_service: Box::new(TemperatureLogService {}),
+            temperature_chart_service: Box::new(TemperatureChartService),
             master_list_service: Box::new(MasterListService {}),
             invoice_line_service: Box::new(InvoiceLineService {}),
             invoice_count_service: Box::new(InvoiceCountService {}),
@@ -175,6 +192,8 @@ impl ServiceProvider {
             barcode_service: Box::new(BarcodeService {}),
             repack_service: Box::new(RepackService {}),
             log_service: Box::new(LogService {}),
+            plugin_data_service: Box::new(PluginDataService {}),
+            temperature_excursion_service: Box::new(TemperatureExcursionService {}),
         }
     }
 
@@ -256,7 +275,6 @@ pub trait GeneralServiceTrait: Sync + Send {
         create_system_user(service_provider)
     }
 
-    // TODO: Delete when soft delete for master list is implemented
     fn create_missing_master_list_and_program(
         &self,
         service_provider: &ServiceProvider,
