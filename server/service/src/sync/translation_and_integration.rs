@@ -96,6 +96,7 @@ impl<'a> TranslationAndIntegration<'a> {
             }
         };
 
+        let mut integration_batch = Vec::<IntegrationRecords>::new();
         for (number_of_records_integrated, sync_record) in sync_records.into_iter().enumerate() {
             let translation_result = match self.translate_sync_record(&sync_record, &translators) {
                 Ok(translation_result) => translation_result,
@@ -130,31 +131,50 @@ impl<'a> TranslationAndIntegration<'a> {
                 }
             };
 
-            // Integrate
-            let integration_result = integration_records.integrate(self.connection);
-            match integration_result {
-                Ok(_) => {
-                    self.sync_buffer
-                        .record_successful_integration(&sync_record)?;
-                    result.insert_success(&sync_record.table_name)
-                }
-                // Record database_error in sync buffer and in result
-                Err(database_error) => {
-                    let error = anyhow::anyhow!("{:?}", database_error);
-                    self.sync_buffer
-                        .record_integration_error(&sync_record, &error)?;
-                    result.insert_error(&sync_record.table_name);
-                    warn!(
-                        "{:?} {:?} {:?}",
-                        error, sync_record.record_id, sync_record.table_name
-                    );
-                }
-            }
+            integration_batch.push(integration_records);
+            if integration_batch.len() >= 500
+                || number_of_records_integrated + 1 == total_to_integrate
+            {
+                self.connection
+                    .transaction_sync(|connection| {
+                        for integration_records in &integration_batch {
+                            // Integrate
+                            let integration_result = integration_records.integrate(connection);
+                            match integration_result {
+                                Ok(_) => {
+                                    self.sync_buffer
+                                        .record_successful_integration(&sync_record)?;
+                                    result.insert_success(&sync_record.table_name)
+                                }
+                                // Record database_error in sync buffer and in result
+                                Err(database_error) => {
+                                    let error = anyhow::anyhow!("{:?}", database_error);
+                                    self.sync_buffer
+                                        .record_integration_error(&sync_record, &error)?;
+                                    result.insert_error(&sync_record.table_name);
+                                    warn!(
+                                        "{:?} {:?} {:?}",
+                                        error, sync_record.record_id, sync_record.table_name
+                                    );
+                                }
+                            }
+                        }
 
-            if number_of_records_integrated % PROGRESS_STEP_LEN == 0 {
-                record_progress(total_to_integrate - number_of_records_integrated)?;
+                        // round down to closest step size
+                        record_progress(
+                            (total_to_integrate - number_of_records_integrated - 1)
+                                / PROGRESS_STEP_LEN
+                                * PROGRESS_STEP_LEN,
+                        )?;
+
+                        Ok(())
+                    })
+                    .map_err(|e: TransactionError<RepositoryError>| e.to_inner_error())?;
+
+                integration_batch.clear();
             }
         }
+        assert!(integration_batch.is_empty());
 
         // Record final progress
         record_progress(0)?;
@@ -166,7 +186,7 @@ impl<'a> TranslationAndIntegration<'a> {
 impl IntegrationRecords {
     pub(crate) fn integrate(&self, connection: &StorageConnection) -> Result<(), RepositoryError> {
         // Only start nested transaction if transaction is already ongoing. See integrate_and_translate_sync_buffer
-        let start_nested_transaction = { connection.transaction_level.get() > 0 };
+        let start_nested_transaction = false; //{ connection.transaction_level.get() > 0 };
 
         for delete in self.deletes.iter() {
             // Integrate every record in a sub transaction. This is mainly for Postgres where the
