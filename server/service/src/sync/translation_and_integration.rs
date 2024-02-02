@@ -441,6 +441,87 @@ mod test {
     }
 
     #[actix_rt::test]
+    async fn test_nested_transaction_speed() {
+        // SQLITE
+
+        // cargo test --package service --lib data/temp.txt -- sync::translation_and_integration::test::test_nested_transaction_speed --exact --nocapture
+        // generate                        PT0S    PT0S
+        // insert transaction              PT0.267825S     PT0.267825S
+        // done insert transaction         PT2.581612S     PT2.313787S
+        // insert nested transaction       PT2.581617S     PT0.000005S
+        // done insert nested transaction  PT5.093400S     PT2.511783S
+
+        // POSTGRES
+
+        // cargo test --features postgres --package service --lib data/temp.txt -- sync::translation_and_integration::test::test_nested_transaction_speed --exact --nocapture
+        // generate                        PT0S    PT0S
+        // insert transaction              PT0.292114S     PT0.292114S
+        // done insert transaction         PT9.086202S     PT8.794088S
+        // insert nested transaction       PT9.086207S     PT0.000005S
+        // done insert nested transaction  PT22.342693S    PT13.256486S
+
+        let (_, connection_transact, _, _) = test_db::setup_all(
+            "test_nested_transaction_speed_transaction",
+            MockDataInserts::none(),
+        )
+        .await;
+
+        let (_, connection_transact_nested, _, _) = test_db::setup_all(
+            "test_nested_transaction_speed_nested_transaction",
+            MockDataInserts::none(),
+        )
+        .await;
+
+        bench_point("generate");
+
+        let records: Vec<UnitRow> = (0..100000)
+            .into_iter()
+            .map(|num| UnitRow {
+                id: uuid(),
+                name: uuid(),
+                description: Some(uuid()),
+                index: num,
+            })
+            .collect();
+
+        bench_point("insert transaction");
+        connection_transact
+            .transaction_sync(|con| {
+                let repo = UnitRowRepository::new(&con);
+                for record in records.iter() {
+                    repo.upsert_one(&record).unwrap();
+                }
+
+                Ok(()) as Result<(), ()>
+            })
+            .unwrap();
+
+        bench_point("done insert transaction");
+
+        bench_point("insert nested transaction");
+        connection_transact_nested
+            .transaction_sync(|con| {
+                for record in records.iter() {
+                    con.transaction_sync_etc(
+                        |con| {
+                            let repo = UnitRowRepository::new(&con);
+                            repo.upsert_one(&record).unwrap();
+
+                            Ok(()) as Result<(), ()>
+                        },
+                        false,
+                    )
+                    .unwrap();
+                }
+                Ok(()) as Result<(), ()>
+            })
+            .unwrap();
+
+        bench_point("done insert nested transaction");
+        bench_results();
+    }
+
+    #[actix_rt::test]
     async fn test_transaction_fall_through() {
         // Fall through, in postgres the whole transaction fails, in sqlite just the things that was broken
         let (_, connection, _, _) =
