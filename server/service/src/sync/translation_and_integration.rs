@@ -198,13 +198,9 @@ pub(crate) fn integrate(
     connection: &StorageConnection,
     integration_records: &[IntegrationOperation],
 ) -> Result<(), RepositoryError> {
-    // Only start nested transaction if transaction is already ongoing. See integrate_and_translate_sync_buffer
+    // Only start nested transaction if transaction is already ongoing and if we are using postgres. See integrate_and_translate_sync_buffer
     let start_nested_transaction = {
-        connection
-            .lock()
-            .transaction_level::<RepositoryError>()
-            .map_err(|e| e.to_inner_error())?
-            > 0
+        connection.lock().transaction_level::<RepositoryError>()? > 0 && cfg!(feature = "postgres")
     };
 
     for integration_record in integration_records.iter() {

@@ -183,7 +183,7 @@ pub(crate) enum PullTranslateResult {
     // Translator was found for a record, but ignored because of unexpected data or error
     // For example if store is a system store, or report context not found
     Ignored(String),
-    // Translator doesn't translates this record
+    // Translator doesn't translate this record
     NotMatched,
 }
 

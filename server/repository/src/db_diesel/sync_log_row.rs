@@ -1,3 +1,5 @@
+use std::sync::RwLock;
+
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel_derive_enum::DbEnum;
@@ -144,7 +146,7 @@ impl<'a> SyncLogRowRepository<'a> {
     }
 
     #[cfg(feature = "postgres")]
-    pub fn upsert_one(&self, row: &SyncLogRow) -> Result<(), RepositoryError> {
+    fn _upsert_one(&self, row: &SyncLogRow) -> Result<(), RepositoryError> {
         diesel::insert_into(sync_log_dsl::sync_log)
             .values(row)
             .on_conflict(sync_log_dsl::id)
@@ -155,19 +157,47 @@ impl<'a> SyncLogRowRepository<'a> {
     }
 
     #[cfg(not(feature = "postgres"))]
-    pub fn upsert_one(&self, row: &SyncLogRow) -> Result<(), RepositoryError> {
+    fn _upsert_one(&self, row: &SyncLogRow) -> Result<(), RepositoryError> {
         diesel::replace_into(sync_log_dsl::sync_log)
             .values(row)
             .execute(self.connection.lock().connection())?;
         Ok(())
     }
 
+    pub fn upsert_one(&self, row: &SyncLogRow) -> Result<(), RepositoryError> {
+        row.cache_row();
+        self._upsert_one(row)
+    }
+
     pub fn find_one_by_id(&self, id: &str) -> Result<Option<SyncLogRow>, RepositoryError> {
-        let result = sync_log_dsl::sync_log
+        let result: Option<SyncLogRow> = sync_log_dsl::sync_log
             .filter(sync_log_dsl::id.eq(id))
             .first(self.connection.lock().connection())
-            .optional()?;
+            .optional()?
+            .map(SyncLogRow::or_cached_row);
+
         Ok(result)
+    }
+}
+
+// In order to display integration progress, while integration is in progress in a transaction, we save the latest
+// sync log row update in cache. Then we replace the result of any queries for sync_log row with the cached row
+pub(super) static CACHED_SYNC_LOG: RwLock<Option<SyncLogRow>> = RwLock::new(None);
+impl SyncLogRow {
+    fn cache_row(&self) {
+        *CACHED_SYNC_LOG.write().unwrap() = Some(self.clone());
+    }
+
+    pub(super) fn or_cached_row(self) -> Self {
+        // This would need to accept "RwLockReadGuard<'static, Option<SyncLogRow>>" to be optimised for mapping array
+        let cached_row = CACHED_SYNC_LOG.read().unwrap();
+        let Some(cached_row) = cached_row.as_ref() else {
+            return self;
+        };
+        match self.id == cached_row.id {
+            true => cached_row.clone(),
+            false => self,
+        }
     }
 }
 

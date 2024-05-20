@@ -289,7 +289,7 @@ impl Synchroniser {
 /// Translation And Integration of sync buffer, pub since used in CLI
 pub fn integrate_and_translate_sync_buffer<'a>(
     connection: &StorageConnection,
-    execute_in_transaction: bool,
+    is_initialising: bool,
     logger: Option<&mut SyncLogger<'a>>,
     source_site_id: Option<i32>,
 ) -> Result<
@@ -303,10 +303,15 @@ pub fn integrate_and_translate_sync_buffer<'a>(
     // Integration is done inside a transaction, to make sure all records are available at the same time
     // and maintain logical data integrity. During initialisation nested transactions cause significant
     // reduction in speed of this operation, since the system is not available during initialisation we don't need
-    // overall transaction to enforce logical data integrity:
-    // - initialised: create outer transaction and sub transaction for every upsert and every delete
+    // overall transaction to enforce logical data integrity.
+    // However, mass database upsert/delete operations needs to be done in a transaction for sqlite to avoid
+    // a significant performance overhead (as per: https://github.com/msupply-foundation/open-msupply/issues/2790#issuecomment-1920565388)
+    // - initialised: create outer transaction. For postgres create sub transaction for every upsert and every delete
     //               (sub transaction is needed to 'skip' errors in postgres, see IntegrationRecords.integrate)
     // - not initialised: no transactions at all
+
+    let is_sqlite = !cfg!(feature = "postgres");
+    let execute_in_transaction = !is_initialising || is_sqlite;
 
     // Closure, to be run in a transaction or without a transaction
     let integrate_and_translate = |connection: &StorageConnection| -> Result<
@@ -371,6 +376,7 @@ pub fn integrate_and_translate_sync_buffer<'a>(
         ))
     };
 
+    let start = std::time::SystemTime::now();
     let result = if execute_in_transaction {
         connection
             .transaction_sync(integrate_and_translate)
@@ -378,6 +384,7 @@ pub fn integrate_and_translate_sync_buffer<'a>(
     } else {
         integrate_and_translate(&connection)
     }?;
+    println!("ELAPSED: {:?}", start.elapsed().unwrap());
 
     Ok(result)
 }
