@@ -319,7 +319,8 @@ impl TranslationAndIntegrationResults {
 #[cfg(test)]
 mod test {
     use repository::{
-        mock::MockDataInserts, test_db, ItemRow, ItemRowRepository, UnitRow, UnitRowRepository,
+        mock::{MockData, MockDataInserts},
+        test_db, ItemRow, ItemRowRepository, RepositoryError, UnitRow, UnitRowRepository,
     };
     use util::{assert_matches, bench_point, bench_results, inline_init, uuid::uuid};
 
@@ -516,6 +517,116 @@ mod test {
                 Ok(()) as Result<(), ()>
             })
             .unwrap();
+
+        bench_point("done insert nested transaction");
+        bench_results();
+    }
+
+    #[actix_rt::test]
+    async fn test_nested_transaction_and_errors_speed() {
+        // SQLITE
+
+        // cargo test --package service --lib data/temp.txt -- sync::translation_and_integration::test::test_nested_transaction_and_errors_speed --exact --nocapture
+        // generate                        PT0S    PT0S
+        // insert transaction              PT0.094401S     PT0.094401S
+        // done insert transaction         PT4.992747S     PT4.898346S
+        // insert nested transaction       PT4.992756S     PT0.000009S
+        // done insert nested transaction  PT71.597694S    PT66.604938S
+
+        // POSTGRES
+
+        // cargo test --features postgres --package service --lib data/temp.txt -- sync::translation_and_integration::test::test_nested_transaction_and_errors_speed --exact --nocapture
+        // generate                        PT0S    PT0S
+        // insert nested transaction       PT0.129909S     PT0.129909S
+        // done insert nested transaction  PT236.547470S   PT236.417561S
+
+        let unit_row = UnitRow {
+            id: uuid(),
+            ..Default::default()
+        };
+
+        let (_, connection_transact, _, _) = test_db::setup_all_with_data(
+            "test_nested_transaction_and_error_speed_transaction",
+            MockDataInserts::none(),
+            MockData {
+                units: vec![unit_row.clone()],
+                ..Default::default()
+            },
+        )
+        .await;
+
+        let (_, connection_transact_nested, _, _) = test_db::setup_all_with_data(
+            "test_nested_transaction_and_error_speed_nested_transaction",
+            MockDataInserts::none(),
+            MockData {
+                units: vec![unit_row.clone()],
+                ..Default::default()
+            },
+        )
+        .await;
+
+        bench_point("generate");
+
+        let records: Vec<ItemRow> = (0..100000)
+            .into_iter()
+            .map(|num| ItemRow {
+                id: uuid(),
+                // Error in half the records
+                unit_id: if num % 2 == 0 {
+                    Some(unit_row.id.clone())
+                } else {
+                    Some("does not exist".to_string())
+                },
+                ..Default::default()
+            })
+            .collect();
+
+        // Nested transaction will error
+        if cfg!(not(feature = "postgres")) {
+            let mut error_count = 0;
+            bench_point("insert transaction");
+            connection_transact
+                .transaction_sync(|con| {
+                    let repo = ItemRowRepository::new(&con);
+                    for record in records.iter() {
+                        if repo.upsert_one(&record).is_err() {
+                            error_count += 1
+                        }
+                    }
+
+                    Ok(()) as Result<(), ()>
+                })
+                .unwrap();
+
+            assert_eq!(error_count, 50000);
+            bench_point("done insert transaction");
+        }
+
+        let mut error_count = 0;
+        bench_point("insert nested transaction");
+        connection_transact_nested
+            .transaction_sync(|con| {
+                for record in records.iter() {
+                    if con
+                        .transaction_sync_etc(
+                            |con| {
+                                let repo = ItemRowRepository::new(&con);
+                                repo.upsert_one(&record)?;
+
+                                Ok(()) as Result<(), RepositoryError>
+                            },
+                            false,
+                        )
+                        .is_err()
+                    {
+                        error_count += 1
+                    }
+                }
+                Ok(()) as Result<(), ()>
+            })
+            .unwrap();
+
+        assert_eq!(error_count, 50000);
 
         bench_point("done insert nested transaction");
         bench_results();
