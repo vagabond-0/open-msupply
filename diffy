@@ -1,0 +1,4310 @@
+diff --git a/diff.it b/diff.it
+new file mode 100644
+index 000000000..e69de29bb
+diff --git a/server/graphql/batch_mutations/src/batch_inbound_shipment.rs b/server/graphql/batch_mutations/src/batch_inbound_shipment.rs
+index 898f2e90c..b6ceb7cd7 100644
+--- a/server/graphql/batch_mutations/src/batch_inbound_shipment.rs
++++ b/server/graphql/batch_mutations/src/batch_inbound_shipment.rs
+@@ -385,10 +385,9 @@ mod test {
+             },
+             InvoiceServiceTrait,
+         },
+-        invoice_line::inbound_shipment_line::{
+-            DeleteInboundShipmentLine, DeleteInboundShipmentLineError, InsertInboundShipmentLine,
+-            InsertInboundShipmentLineError, UpdateInboundShipmentLine,
+-            UpdateInboundShipmentLineError,
++        invoice_line::stock_in_line::{
++            DeleteStockInLine, DeleteStockInLineError, InsertStockInLine, InsertStockInLineError,
++            UpdateStockInLine, UpdateStockInLineError,
+         },
+         service_provider::{ServiceContext, ServiceProvider},
+         InputWithResult,
+@@ -587,22 +586,22 @@ mod test {
+                     result: Err(InsertInboundShipmentError::OtherPartyNotASupplier),
+                 }],
+                 insert_line: vec![InputWithResult {
+-                    input: inline_init(|input: &mut InsertInboundShipmentLine| {
++                    input: inline_init(|input: &mut InsertStockInLine| {
+                         input.id = "id2".to_string()
+                     }),
+-                    result: Err(InsertInboundShipmentLineError::InvoiceDoesNotExist {}),
++                    result: Err(InsertStockInLineError::InvoiceDoesNotExist {}),
+                 }],
+                 update_line: vec![InputWithResult {
+-                    input: inline_init(|input: &mut UpdateInboundShipmentLine| {
++                    input: inline_init(|input: &mut UpdateStockInLine| {
+                         input.id = "id3".to_string()
+                     }),
+-                    result: Err(UpdateInboundShipmentLineError::LineDoesNotExist {}),
++                    result: Err(UpdateStockInLineError::LineDoesNotExist {}),
+                 }],
+                 delete_line: vec![InputWithResult {
+-                    input: inline_init(|input: &mut DeleteInboundShipmentLine| {
++                    input: inline_init(|input: &mut DeleteStockInLine| {
+                         input.id = "id4".to_string()
+                     }),
+-                    result: Err(DeleteInboundShipmentLineError::LineDoesNotExist {}),
++                    result: Err(DeleteStockInLineError::LineDoesNotExist {}),
+                 }],
+                 update_shipment: vec![InputWithResult {
+                     input: inline_init(|input: &mut UpdateInboundShipment| {
+@@ -640,10 +639,10 @@ mod test {
+                     result: Err(InsertInboundShipmentError::OtherPartyNotASupplier),
+                 }],
+                 insert_line: vec![InputWithResult {
+-                    input: inline_init(|input: &mut InsertInboundShipmentLine| {
++                    input: inline_init(|input: &mut InsertStockInLine| {
+                         input.id = "id2".to_string()
+                     }),
+-                    result: Err(InsertInboundShipmentLineError::InvoiceDoesNotExist {}),
++                    result: Err(InsertStockInLineError::InvoiceDoesNotExist {}),
+                 }],
+                 update_line: vec![],
+                 delete_line: vec![],
+@@ -704,7 +703,7 @@ mod test {
+                 insert_shipment: vec![],
+                 insert_line: vec![],
+                 update_line: vec![InputWithResult {
+-                    input: inline_init(|input: &mut UpdateInboundShipmentLine| {
++                    input: inline_init(|input: &mut UpdateStockInLine| {
+                         input.id = "id3".to_string()
+                     }),
+                     result: Ok(inline_init(|input: &mut InvoiceLine| {
+diff --git a/server/graphql/inventory_adjustment/mutations/insert.rs b/server/graphql/inventory_adjustment/mutations/insert.rs
+index d97d3c8cf..ff8482def 100644
+--- a/server/graphql/inventory_adjustment/mutations/insert.rs
++++ b/server/graphql/inventory_adjustment/mutations/insert.rs
+@@ -112,6 +112,8 @@ fn map_error(error: ServiceError) -> Result<InsertErrorInterface> {
+         | ServiceError::AdjustmentReasonNotProvided => BadUserInput(formatted_error),
+ 
+         ServiceError::NewlyCreatedInvoiceDoesNotExist
++        | ServiceError::StockInLineInsertError(_)
++        | ServiceError::StockOutLineInsertError(_)
+         | ServiceError::InternalError(_)
+         | ServiceError::DatabaseError(_) => InternalError(formatted_error),
+     };
+diff --git a/server/graphql/invoice/src/mutations/inbound_shipment/delete.rs b/server/graphql/invoice/src/mutations/inbound_shipment/delete.rs
+index 9c9eb353e..c11d7f1b7 100644
+--- a/server/graphql/invoice/src/mutations/inbound_shipment/delete.rs
++++ b/server/graphql/invoice/src/mutations/inbound_shipment/delete.rs
+@@ -118,7 +118,7 @@ mod test {
+             },
+             InvoiceServiceTrait,
+         },
+-        invoice_line::inbound_shipment_line::DeleteInboundShipmentLineError,
++        invoice_line::stock_in_line::DeleteStockInLineError,
+         service_provider::{ServiceContext, ServiceProvider},
+     };
+ 
+@@ -260,7 +260,7 @@ mod test {
+         let test_service = TestService(Box::new(|_| {
+             Err(ServiceError::LineDeleteError {
+                 line_id: "n/a".to_string(),
+-                error: DeleteInboundShipmentLineError::LineDoesNotExist,
++                error: DeleteStockInLineError::LineDoesNotExist,
+             })
+         }));
+         let expected_message = "Internal error";
+diff --git a/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/delete.rs b/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/delete.rs
+index 1d5163f7b..5682977a9 100644
+--- a/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/delete.rs
++++ b/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/delete.rs
+@@ -8,8 +8,8 @@ use graphql_core::{
+ use graphql_types::types::DeleteResponse as GenericDeleteResponse;
+ 
+ use service::auth::{Resource, ResourceAccessRequest};
+-use service::invoice_line::inbound_shipment_line::{
+-    DeleteInboundShipmentLine as ServiceInput, DeleteInboundShipmentLineError as ServiceError,
++use service::invoice_line::stock_in_line::{
++    DeleteStockInLine as ServiceInput, DeleteStockInLineError as ServiceError, StockInType,
+ };
+ 
+ #[derive(InputObject)]
+@@ -46,7 +46,7 @@ pub fn delete(ctx: &Context<'_>, store_id: &str, input: DeleteInput) -> Result<D
+     map_response(
+         service_provider
+             .invoice_line_service
+-            .delete_inbound_shipment_line(&service_context, input.to_domain()),
++            .delete_stock_in_line(&service_context, input.to_domain()),
+     )
+ }
+ 
+@@ -63,7 +63,10 @@ pub enum DeleteErrorInterface {
+ impl DeleteInput {
+     pub fn to_domain(self) -> ServiceInput {
+         let DeleteInput { id } = self;
+-        ServiceInput { id }
++        ServiceInput {
++            id,
++            r#type: StockInType::InboundShipment,
++        }
+     }
+ }
+ 
+@@ -101,9 +104,9 @@ fn map_error(error: ServiceError) -> Result<DeleteErrorInterface> {
+             return Ok(DeleteErrorInterface::BatchIsReserved(BatchIsReserved {}))
+         }
+         // Standard Graphql Errors
+-        ServiceError::NotThisInvoiceLine(_) => BadUserInput(formatted_error),
+-        ServiceError::NotAnInboundShipment => BadUserInput(formatted_error),
+-        ServiceError::NotThisStoreInvoice => BadUserInput(formatted_error),
++        ServiceError::NotThisInvoiceLine(_)
++        | ServiceError::NotAStockIn
++        | ServiceError::NotThisStoreInvoice => BadUserInput(formatted_error),
+         ServiceError::DatabaseError(_) => InternalError(formatted_error),
+         ServiceError::LineUsedInStocktake => InternalError(formatted_error),
+     };
+@@ -122,9 +125,9 @@ mod test {
+ 
+     use service::{
+         invoice_line::{
+-            inbound_shipment_line::{
+-                DeleteInboundShipmentLine as ServiceInput,
+-                DeleteInboundShipmentLineError as ServiceError,
++            stock_in_line::{
++                DeleteStockInLine as ServiceInput, DeleteStockInLineError as ServiceError,
++                StockInType,
+             },
+             InvoiceLineServiceTrait,
+         },
+@@ -138,7 +141,7 @@ mod test {
+     pub struct TestService(pub Box<DeleteLineMethod>);
+ 
+     impl InvoiceLineServiceTrait for TestService {
+-        fn delete_inbound_shipment_line(
++        fn delete_stock_in_line(
+             &self,
+             _: &ServiceContext,
+             input: ServiceInput,
+@@ -281,7 +284,7 @@ mod test {
+         );
+ 
+         //NotAnInboundShipment
+-        let test_service = TestService(Box::new(|_| Err(ServiceError::NotAnInboundShipment)));
++        let test_service = TestService(Box::new(|_| Err(ServiceError::NotAStockIn)));
+         let expected_message = "Bad user input";
+         assert_standard_graphql_error!(
+             &settings,
+@@ -348,6 +351,7 @@ mod test {
+                 input,
+                 ServiceInput {
+                     id: "id input".to_string(),
++                    r#type: StockInType::InboundShipment
+                 }
+             );
+             Ok("deleted id".to_owned())
+diff --git a/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/insert.rs b/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/insert.rs
+index 5ecae5531..69c1c091e 100644
+--- a/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/insert.rs
++++ b/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/insert.rs
+@@ -9,8 +9,8 @@ use graphql_types::types::InvoiceLineNode;
+ 
+ use repository::InvoiceLine;
+ use service::auth::{Resource, ResourceAccessRequest};
+-use service::invoice_line::inbound_shipment_line::{
+-    InsertInboundShipmentLine as ServiceInput, InsertInboundShipmentLineError as ServiceError,
++use service::invoice_line::stock_in_line::{
++    InsertStockInLine as ServiceInput, InsertStockInLineError as ServiceError, StockInType,
+ };
+ use service::NullableUpdate;
+ 
+@@ -59,7 +59,7 @@ pub fn insert(ctx: &Context<'_>, store_id: &str, input: InsertInput) -> Result<I
+     map_response(
+         service_provider
+             .invoice_line_service
+-            .insert_inbound_shipment_line(&service_context, input.to_domain()),
++            .insert_stock_in_line(&service_context, input.to_domain()),
+     )
+ }
+ 
+@@ -103,6 +103,12 @@ impl InsertInput {
+             number_of_packs,
+             total_before_tax,
+             tax_percentage,
++            r#type: StockInType::InboundShipment,
++            // Default
++            note: None,
++            stock_line_id: None,
++            barcode: None,
++            stock_on_hold: false,
+         }
+     }
+ }
+@@ -137,15 +143,16 @@ fn map_error(error: ServiceError) -> Result<InsertErrorInterface> {
+         }
+ 
+         // Standard Graphql Errors
+-        ServiceError::NotThisStoreInvoice => BadUserInput(formatted_error),
+-        ServiceError::NotAnInboundShipment => BadUserInput(formatted_error),
+-        ServiceError::LineAlreadyExists => BadUserInput(formatted_error),
+-        ServiceError::NumberOfPacksBelowZero => BadUserInput(formatted_error),
+-        ServiceError::PackSizeBelowOne => BadUserInput(formatted_error),
+-        ServiceError::LocationDoesNotExist => BadUserInput(formatted_error),
+-        ServiceError::ItemNotFound => BadUserInput(formatted_error),
+-        ServiceError::DatabaseError(_) => InternalError(formatted_error),
+-        ServiceError::NewlyCreatedLineDoesNotExist => InternalError(formatted_error),
++        ServiceError::NotThisStoreInvoice
++        | ServiceError::LineAlreadyExists
++        | ServiceError::NotAStockIn
++        | ServiceError::NumberOfPacksBelowOne
++        | ServiceError::PackSizeBelowOne
++        | ServiceError::LocationDoesNotExist
++        | ServiceError::ItemNotFound => BadUserInput(formatted_error),
++        ServiceError::DatabaseError(_) | ServiceError::NewlyCreatedLineDoesNotExist => {
++            InternalError(formatted_error)
++        }
+     };
+ 
+     Err(graphql_error.extend())
+@@ -168,9 +175,9 @@ mod test {
+     use serde_json::json;
+     use service::{
+         invoice_line::{
+-            inbound_shipment_line::{
+-                InsertInboundShipmentLine as ServiceInput,
+-                InsertInboundShipmentLineError as ServiceError,
++            stock_in_line::{
++                InsertStockInLine as ServiceInput, InsertStockInLineError as ServiceError,
++                StockInType,
+             },
+             InvoiceLineServiceTrait,
+         },
+@@ -185,7 +192,7 @@ mod test {
+     pub struct TestService(pub Box<InsertLineMethod>);
+ 
+     impl InvoiceLineServiceTrait for TestService {
+-        fn insert_inbound_shipment_line(
++        fn insert_stock_in_line(
+             &self,
+             _: &ServiceContext,
+             input: ServiceInput,
+@@ -294,7 +301,7 @@ mod test {
+         );
+ 
+         //NotAnInboundShipment
+-        let test_service = TestService(Box::new(|_| Err(ServiceError::NotAnInboundShipment)));
++        let test_service = TestService(Box::new(|_| Err(ServiceError::NotAStockIn)));
+         let expected_message = "Bad user input";
+         assert_standard_graphql_error!(
+             &settings,
+@@ -318,7 +325,7 @@ mod test {
+         );
+ 
+         //NumberOfPacksBelowOne
+-        let test_service = TestService(Box::new(|_| Err(ServiceError::NumberOfPacksBelowZero)));
++        let test_service = TestService(Box::new(|_| Err(ServiceError::NumberOfPacksBelowOne)));
+         let expected_message = "Bad user input";
+         assert_standard_graphql_error!(
+             &settings,
+@@ -434,7 +441,12 @@ mod test {
+                     expiry_date: Some(NaiveDate::from_ymd_opt(2022, 1, 1).unwrap()),
+                     number_of_packs: 1.0,
+                     total_before_tax: Some(1.1),
+-                    tax_percentage: Some(5.0)
++                    tax_percentage: Some(5.0),
++                    r#type: StockInType::InboundShipment,
++                    note: None,
++                    stock_line_id: None,
++                    barcode: None,
++                    stock_on_hold: false
+                 }
+             );
+             Ok(InvoiceLine {
+diff --git a/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/update.rs b/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/update.rs
+index 7959bd9d7..6bc22ba2e 100644
+--- a/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/update.rs
++++ b/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/update.rs
+@@ -10,8 +10,8 @@ use graphql_types::types::InvoiceLineNode;
+ 
+ use repository::InvoiceLine;
+ use service::auth::{Resource, ResourceAccessRequest};
+-use service::invoice_line::inbound_shipment_line::{
+-    UpdateInboundShipmentLine as ServiceInput, UpdateInboundShipmentLineError as ServiceError,
++use service::invoice_line::stock_in_line::{
++    StockInType, UpdateStockInLine as ServiceInput, UpdateStockInLineError as ServiceError,
+ };
+ use service::invoice_line::ShipmentTaxUpdate;
+ use service::NullableUpdate;
+@@ -61,7 +61,7 @@ pub fn update(ctx: &Context<'_>, store_id: &str, input: UpdateInput) -> Result<U
+ 
+     let response = match service_provider
+         .invoice_line_service
+-        .update_inbound_shipment_line(&service_context, input.to_domain())
++        .update_stock_in_line(&service_context, input.to_domain())
+     {
+         Ok(invoice_line) => UpdateResponse::Response(InvoiceLineNode::from_domain(invoice_line)),
+         Err(error) => UpdateResponse::Error(UpdateError {
+@@ -112,11 +112,14 @@ impl UpdateInput {
+             cost_price_per_pack,
+             number_of_packs,
+             total_before_tax,
+-            tax: tax.and_then(|tax| {
++            tax_percentage: tax.and_then(|tax| {
+                 Some(ShipmentTaxUpdate {
+                     percentage: tax.percentage,
+                 })
+             }),
++            r#type: StockInType::InboundShipment,
++            // Default
++            note: None,
+         }
+     }
+ }
+@@ -155,13 +158,13 @@ fn map_error(error: ServiceError) -> Result<UpdateErrorInterface> {
+             return Ok(UpdateErrorInterface::BatchIsReserved(BatchIsReserved {}))
+         }
+         // Standard Graphql Errors
+-        ServiceError::NotThisStoreInvoice => BadUserInput(formatted_error),
+-        ServiceError::NotAnInboundShipment => BadUserInput(formatted_error),
+-        ServiceError::NumberOfPacksBelowZero => BadUserInput(formatted_error),
+-        ServiceError::NotThisInvoiceLine(_) => BadUserInput(formatted_error),
+-        ServiceError::PackSizeBelowOne => BadUserInput(formatted_error),
+-        ServiceError::LocationDoesNotExist => BadUserInput(formatted_error),
+-        ServiceError::ItemNotFound => BadUserInput(formatted_error),
++        ServiceError::NotThisStoreInvoice
++        | ServiceError::NotAStockIn
++        | ServiceError::NumberOfPacksBelowOne
++        | ServiceError::NotThisInvoiceLine(_)
++        | ServiceError::PackSizeBelowOne
++        | ServiceError::LocationDoesNotExist
++        | ServiceError::ItemNotFound => BadUserInput(formatted_error),
+         ServiceError::DatabaseError(_) => InternalError(formatted_error),
+         ServiceError::UpdatedLineDoesNotExist => InternalError(formatted_error),
+     };
+@@ -186,9 +189,9 @@ mod test {
+     use serde_json::json;
+     use service::{
+         invoice_line::{
+-            inbound_shipment_line::{
+-                UpdateInboundShipmentLine as ServiceInput,
+-                UpdateInboundShipmentLineError as ServiceError,
++            stock_in_line::{
++                StockInType, UpdateStockInLine as ServiceInput,
++                UpdateStockInLineError as ServiceError,
+             },
+             InvoiceLineServiceTrait,
+         },
+@@ -203,7 +206,7 @@ mod test {
+     pub struct TestService(pub Box<InsertLineMethod>);
+ 
+     impl InvoiceLineServiceTrait for TestService {
+-        fn update_inbound_shipment_line(
++        fn update_stock_in_line(
+             &self,
+             _: &ServiceContext,
+             input: ServiceInput,
+@@ -348,7 +351,7 @@ mod test {
+         );
+ 
+         //NotAnInboundShipment
+-        let test_service = TestService(Box::new(|_| Err(ServiceError::NotAnInboundShipment)));
++        let test_service = TestService(Box::new(|_| Err(ServiceError::NotAStockIn)));
+         let expected_message = "Bad user input";
+         assert_standard_graphql_error!(
+             &settings,
+@@ -360,7 +363,7 @@ mod test {
+         );
+ 
+         //NumberOfPacksBelowOne
+-        let test_service = TestService(Box::new(|_| Err(ServiceError::NumberOfPacksBelowZero)));
++        let test_service = TestService(Box::new(|_| Err(ServiceError::NumberOfPacksBelowOne)));
+         let expected_message = "Bad user input";
+         assert_standard_graphql_error!(
+             &settings,
+@@ -476,8 +479,10 @@ mod test {
+                     sell_price_per_pack: Some(1.0),
+                     expiry_date: Some(NaiveDate::from_ymd_opt(2022, 1, 1).unwrap()),
+                     number_of_packs: Some(1.0),
++                    r#type: StockInType::InboundShipment,
+                     total_before_tax: None,
+-                    tax: None,
++                    tax_percentage: None,
++                    note: None,
+                 }
+             );
+             Ok(InvoiceLine {
+diff --git a/server/graphql/invoice_line/src/mutations/inbound_shipment_line/service_line/delete.rs b/server/graphql/invoice_line/src/mutations/inbound_shipment_line/service_line/delete.rs
+index e6f6617af..3b4836265 100644
+--- a/server/graphql/invoice_line/src/mutations/inbound_shipment_line/service_line/delete.rs
++++ b/server/graphql/invoice_line/src/mutations/inbound_shipment_line/service_line/delete.rs
+@@ -9,7 +9,7 @@ use graphql_core::standard_graphql_error::{validate_auth, StandardGraphqlError};
+ use graphql_types::types::DeleteResponse as GenericDeleteResponse;
+ 
+ use service::auth::{Resource, ResourceAccessRequest};
+-use service::invoice_line::inbound_shipment_line::DeleteInboundShipmentLine as ServiceInput;
++use service::invoice_line::stock_in_line::{DeleteStockInLine as ServiceInput, StockInType};
+ 
+ #[derive(InputObject)]
+ #[graphql(name = "DeleteInboundShipmentServiceLineInput")]
+@@ -72,7 +72,10 @@ pub enum DeleteErrorInterface {
+ impl DeleteInput {
+     pub fn to_domain(self) -> ServiceInput {
+         let DeleteInput { id } = self;
+-        ServiceInput { id }
++        ServiceInput {
++            id,
++            r#type: StockInType::InboundShipment,
++        }
+     }
+ }
+ 
+@@ -117,14 +120,14 @@ mod test {
+     use serde_json::json;
+     use service::{
+         invoice_line::{
+-            inbound_shipment_line::DeleteInboundShipmentLine,
+             inbound_shipment_service_line::DeleteInboundShipmentServiceLineError,
++            stock_in_line::{DeleteStockInLine, StockInType},
+             InvoiceLineServiceTrait,
+         },
+         service_provider::{ServiceContext, ServiceProvider},
+     };
+ 
+-    type ServiceInput = DeleteInboundShipmentLine;
++    type ServiceInput = DeleteStockInLine;
+     type ServiceError = DeleteInboundShipmentServiceLineError;
+ 
+     type DeleteLineMethod = dyn Fn(ServiceInput) -> Result<String, ServiceError> + Sync + Send;
+@@ -292,6 +295,7 @@ mod test {
+                 input,
+                 ServiceInput {
+                     id: "delete line id input".to_string(),
++                    r#type: StockInType::InboundShipment
+                 }
+             );
+             Ok("delete line id input".to_string())
+diff --git a/server/graphql/invoice_line/src/mutations/outbound_shipment_line/line/insert.rs b/server/graphql/invoice_line/src/mutations/outbound_shipment_line/line/insert.rs
+index f91c9bbb8..fa4fbf11a 100644
+--- a/server/graphql/invoice_line/src/mutations/outbound_shipment_line/line/insert.rs
++++ b/server/graphql/invoice_line/src/mutations/outbound_shipment_line/line/insert.rs
+@@ -96,13 +96,20 @@ impl InsertInput {
+ 
+         ServiceInput {
+             id,
+-            r#type: Some(StockOutType::OutboundShipment),
++            r#type: StockOutType::OutboundShipment,
+             invoice_id,
+             stock_line_id,
+             number_of_packs,
+             total_before_tax,
+             tax_percentage,
++            // Default
+             note: None,
++            location_id: None,
++            batch: None,
++            pack_size: None,
++            expiry_date: None,
++            cost_price_per_pack: None,
++            sell_price_per_pack: None,
+         }
+     }
+ }
+@@ -158,7 +165,6 @@ fn map_error(error: ServiceError) -> Result<InsertErrorInterface> {
+         }
+         // Standard Graphql Errors
+         NotThisStoreInvoice
+-        | NoInvoiceType
+         | InvoiceTypeDoesNotMatch
+         | LineAlreadyExists
+         | NumberOfPacksBelowOne => StandardGraphqlError::BadUserInput(formatted_error),
+@@ -531,9 +537,15 @@ mod test {
+                     stock_line_id: "stock line input".to_string(),
+                     number_of_packs: 1.0,
+                     total_before_tax: Some(1.1),
+-                    r#type: Some(StockOutType::OutboundShipment),
++                    r#type: StockOutType::OutboundShipment,
+                     tax_percentage: Some(5.0),
+                     note: None,
++                    location_id: None,
++                    batch: None,
++                    pack_size: None,
++                    expiry_date: None,
++                    cost_price_per_pack: None,
++                    sell_price_per_pack: None
+                 }
+             );
+             Ok(InvoiceLine {
+diff --git a/server/graphql/invoice_line/src/mutations/prescription_line/insert.rs b/server/graphql/invoice_line/src/mutations/prescription_line/insert.rs
+index 68cb25508..838a732e9 100644
+--- a/server/graphql/invoice_line/src/mutations/prescription_line/insert.rs
++++ b/server/graphql/invoice_line/src/mutations/prescription_line/insert.rs
+@@ -133,7 +133,6 @@ fn map_error(error: ServiceError) -> Result<InsertErrorInterface> {
+         }
+         // Standard Graphql Errors
+         NotThisStoreInvoice
+-        | NoInvoiceType
+         | InvoiceTypeDoesNotMatch
+         | LineAlreadyExists
+         | NumberOfPacksBelowOne => StandardGraphqlError::BadUserInput(formatted_error),
+@@ -157,13 +156,20 @@ impl InsertInput {
+ 
+         ServiceInput {
+             id,
+-            r#type: Some(StockOutType::Prescription),
++            r#type: StockOutType::Prescription,
+             invoice_id,
+             stock_line_id,
+             number_of_packs,
++            note,
++            // Default
+             total_before_tax: None,
+             tax_percentage: None,
+-            note,
++            location_id: None,
++            batch: None,
++            pack_size: None,
++            expiry_date: None,
++            cost_price_per_pack: None,
++            sell_price_per_pack: None,
+         }
+     }
+ }
+@@ -524,13 +530,19 @@ mod test {
+                 input,
+                 ServiceInput {
+                     id: "new id".to_string(),
+-                    r#type: Some(StockOutType::Prescription),
++                    r#type: StockOutType::Prescription,
+                     invoice_id: "invoice input".to_string(),
+                     stock_line_id: "stock line input".to_string(),
+                     number_of_packs: 1.0,
+                     total_before_tax: None,
+                     note: None,
+                     tax_percentage: None,
++                    location_id: None,
++                    batch: None,
++                    pack_size: None,
++                    expiry_date: None,
++                    cost_price_per_pack: None,
++                    sell_price_per_pack: None
+                 }
+             );
+             Ok(InvoiceLine {
+diff --git a/server/graphql/stocktake/src/mutations/update.rs b/server/graphql/stocktake/src/mutations/update.rs
+index c4d1ae786..d5ad35d0f 100644
+--- a/server/graphql/stocktake/src/mutations/update.rs
++++ b/server/graphql/stocktake/src/mutations/update.rs
+@@ -141,7 +141,9 @@ fn map_error(err: ServiceError) -> Result<UpdateErrorInterface> {
+         ServiceError::StocktakeDoesNotExist => BadUserInput(formatted_error),
+         ServiceError::NoLines => BadUserInput(formatted_error),
+         ServiceError::InternalError(err) => InternalError(err),
+-        ServiceError::DatabaseError(_) => InternalError(formatted_error),
++        ServiceError::InsertStockInLineError { .. }
++        | ServiceError::InsertStockOutLineError { .. }
++        | ServiceError::DatabaseError(_) => InternalError(formatted_error),
+     };
+ 
+     Err(graphql_error.extend())
+diff --git a/server/service/src/invoice/inbound_shipment/batch.rs b/server/service/src/invoice/inbound_shipment/batch.rs
+index a2afa0060..96c118ab3 100644
+--- a/server/service/src/invoice/inbound_shipment/batch.rs
++++ b/server/service/src/invoice/inbound_shipment/batch.rs
+@@ -2,19 +2,17 @@ use repository::{Invoice, InvoiceLine, RepositoryError};
+ 
+ use crate::{
+     invoice_line::{
+-        inbound_shipment_line::{
+-            delete_inbound_shipment_line, insert_inbound_shipment_line,
+-            update_inbound_shipment_line,
+-            DeleteInboundShipmentLine, DeleteInboundShipmentLineError, InsertInboundShipmentLine,
+-            InsertInboundShipmentLineError, UpdateInboundShipmentLine,
+-            UpdateInboundShipmentLineError,
+-        },
+         inbound_shipment_service_line::{
+             delete_inbound_shipment_service_line, insert_inbound_shipment_service_line,
+             update_inbound_shipment_service_line, DeleteInboundShipmentServiceLineError,
+             InsertInboundShipmentServiceLine, InsertInboundShipmentServiceLineError,
+             UpdateInboundShipmentServiceLine, UpdateInboundShipmentServiceLineError,
+         },
++        stock_in_line::{
++            delete_stock_in_line, insert_stock_in_line, update_stock_in_line, DeleteStockInLine,
++            DeleteStockInLineError, InsertStockInLine, InsertStockInLineError, UpdateStockInLine,
++            UpdateStockInLineError,
++        },
+     },
+     service_provider::ServiceContext,
+     BatchMutationsProcessor, InputWithResult, WithDBError,
+@@ -29,12 +27,12 @@ use super::{
+ #[derive(Clone)]
+ pub struct BatchInboundShipment {
+     pub insert_shipment: Option<Vec<InsertInboundShipment>>,
+-    pub insert_line: Option<Vec<InsertInboundShipmentLine>>,
+-    pub update_line: Option<Vec<UpdateInboundShipmentLine>>,
+-    pub delete_line: Option<Vec<DeleteInboundShipmentLine>>,
++    pub insert_line: Option<Vec<InsertStockInLine>>,
++    pub update_line: Option<Vec<UpdateStockInLine>>,
++    pub delete_line: Option<Vec<DeleteStockInLine>>,
+     pub insert_service_line: Option<Vec<InsertInboundShipmentServiceLine>>,
+     pub update_service_line: Option<Vec<UpdateInboundShipmentServiceLine>>,
+-    pub delete_service_line: Option<Vec<DeleteInboundShipmentLine>>,
++    pub delete_service_line: Option<Vec<DeleteStockInLine>>,
+     pub update_shipment: Option<Vec<UpdateInboundShipment>>,
+     pub delete_shipment: Option<Vec<DeleteInboundShipment>>,
+     pub continue_on_error: Option<bool>,
+@@ -42,14 +40,12 @@ pub struct BatchInboundShipment {
+ 
+ pub type InsertShipmentsResult =
+     Vec<InputWithResult<InsertInboundShipment, Result<Invoice, InsertInboundShipmentError>>>;
+-pub type InsertLinesResult = Vec<
+-    InputWithResult<InsertInboundShipmentLine, Result<InvoiceLine, InsertInboundShipmentLineError>>,
+->;
+-pub type UpdateLinesResult = Vec<
+-    InputWithResult<UpdateInboundShipmentLine, Result<InvoiceLine, UpdateInboundShipmentLineError>>,
+->;
++pub type InsertLinesResult =
++    Vec<InputWithResult<InsertStockInLine, Result<InvoiceLine, InsertStockInLineError>>>;
++pub type UpdateLinesResult =
++    Vec<InputWithResult<UpdateStockInLine, Result<InvoiceLine, UpdateStockInLineError>>>;
+ pub type DeleteLinesResult =
+-    Vec<InputWithResult<DeleteInboundShipmentLine, Result<String, DeleteInboundShipmentLineError>>>;
++    Vec<InputWithResult<DeleteStockInLine, Result<String, DeleteStockInLineError>>>;
+ pub type InsertServiceLinesResult = Vec<
+     InputWithResult<
+         InsertInboundShipmentServiceLine,
+@@ -62,12 +58,8 @@ pub type UpdateServiceLinesResult = Vec<
+         Result<InvoiceLine, UpdateInboundShipmentServiceLineError>,
+     >,
+ >;
+-pub type DeleteServiceLinesResult = Vec<
+-    InputWithResult<
+-        DeleteInboundShipmentLine,
+-        Result<String, DeleteInboundShipmentServiceLineError>,
+-    >,
+->;
++pub type DeleteServiceLinesResult =
++    Vec<InputWithResult<DeleteStockInLine, Result<String, DeleteInboundShipmentServiceLineError>>>;
+ pub type UpdateShipmentsResult =
+     Vec<InputWithResult<UpdateInboundShipment, Result<Invoice, UpdateInboundShipmentError>>>;
+ pub type DeleteShipmentsResult =
+@@ -110,21 +102,21 @@ pub fn batch_inbound_shipment(
+             // Normal Line
+ 
+             let (has_errors, result) = mutations_processor
+-                .do_mutations_with_user_id(input.insert_line, insert_inbound_shipment_line);
++                .do_mutations_with_user_id(input.insert_line, insert_stock_in_line);
+             results.insert_line = result;
+             if has_errors && !continue_on_error {
+                 return Err(WithDBError::err(results));
+             }
+ 
+             let (has_errors, result) = mutations_processor
+-                .do_mutations_with_user_id(input.update_line, update_inbound_shipment_line);
++                .do_mutations_with_user_id(input.update_line, update_stock_in_line);
+             results.update_line = result;
+             if has_errors && !continue_on_error {
+                 return Err(WithDBError::err(results));
+             }
+ 
+             let (has_errors, result) = mutations_processor
+-                .do_mutations_with_user_id(input.delete_line, delete_inbound_shipment_line);
++                .do_mutations_with_user_id(input.delete_line, delete_stock_in_line);
+             results.delete_line = result;
+             if has_errors && !continue_on_error {
+                 return Err(WithDBError::err(results));
+@@ -205,7 +197,7 @@ mod test {
+             BatchInboundShipment, DeleteInboundShipment, DeleteInboundShipmentError,
+             InsertInboundShipment,
+         },
+-        invoice_line::inbound_shipment_line::InsertInboundShipmentLine,
++        invoice_line::stock_in_line::{InsertStockInLine, StockInType},
+         service_provider::ServiceProvider,
+         InputWithResult,
+     };
+@@ -230,15 +222,14 @@ mod test {
+                 input.id = "new_id".to_string();
+                 input.other_party_id = mock_name_a().id;
+             })]),
+-            insert_line: Some(vec![inline_init(
+-                |input: &mut InsertInboundShipmentLine| {
+-                    input.invoice_id = "new_id".to_string();
+-                    input.id = "new_line_id".to_string();
+-                    input.item_id = mock_item_a().id;
+-                    input.pack_size = 1;
+-                    input.number_of_packs = 1.0;
+-                },
+-            )]),
++            insert_line: Some(vec![inline_init(|input: &mut InsertStockInLine| {
++                input.invoice_id = "new_id".to_string();
++                input.id = "new_line_id".to_string();
++                input.item_id = mock_item_a().id;
++                input.pack_size = 1;
++                input.number_of_packs = 1.0;
++                input.r#type = StockInType::InboundShipment;
++            })]),
+             update_line: None,
+             delete_line: None,
+             update_shipment: None,
+diff --git a/server/service/src/invoice/inbound_shipment/delete/mod.rs b/server/service/src/invoice/inbound_shipment/delete/mod.rs
+index 336cbf826..70874c9ba 100644
+--- a/server/service/src/invoice/inbound_shipment/delete/mod.rs
++++ b/server/service/src/invoice/inbound_shipment/delete/mod.rs
+@@ -7,8 +7,8 @@ use validate::validate;
+ use crate::{
+     activity_log::activity_log_entry,
+     invoice::common::get_lines_for_invoice,
+-    invoice_line::inbound_shipment_line::{
+-        delete_inbound_shipment_line, DeleteInboundShipmentLine, DeleteInboundShipmentLineError,
++    invoice_line::stock_in_line::{
++        delete_stock_in_line, DeleteStockInLine, DeleteStockInLineError, StockInType,
+     },
+     service_provider::ServiceContext,
+     WithDBError,
+@@ -32,10 +32,11 @@ pub fn delete_inbound_shipment(
+ 
+             let lines = get_lines_for_invoice(connection, &input.id)?;
+             for line in lines {
+-                delete_inbound_shipment_line(
++                delete_stock_in_line(
+                     ctx,
+-                    DeleteInboundShipmentLine {
++                    DeleteStockInLine {
+                         id: line.invoice_line_row.id.clone(),
++                        r#type: StockInType::InboundShipment,
+                     },
+                 )
+                 .map_err(|error| DeleteInboundShipmentError::LineDeleteError {
+@@ -71,7 +72,7 @@ pub enum DeleteInboundShipmentError {
+     CannotEditFinalised,
+     LineDeleteError {
+         line_id: String,
+-        error: DeleteInboundShipmentLineError,
++        error: DeleteStockInLineError,
+     },
+ }
+ 
+@@ -109,7 +110,7 @@ mod test {
+         invoice::inbound_shipment::{
+             DeleteInboundShipment, DeleteInboundShipmentError as ServiceError,
+         },
+-        invoice_line::inbound_shipment_line::DeleteInboundShipmentLineError,
++        invoice_line::stock_in_line::DeleteStockInLineError,
+         service_provider::ServiceProvider,
+     };
+ 
+@@ -167,7 +168,7 @@ mod test {
+             ),
+             Err(ServiceError::LineDeleteError {
+                 line_id: "inbound_shipment_a_line_a".to_string(),
+-                error: DeleteInboundShipmentLineError::BatchIsReserved
++                error: DeleteStockInLineError::BatchIsReserved
+             })
+         );
+ 
+diff --git a/server/service/src/invoice/inventory_adjustment/add_new_stock_line/generate.rs b/server/service/src/invoice/inventory_adjustment/add_new_stock_line/generate.rs
+index 9836706da..0fdd8fe21 100644
+--- a/server/service/src/invoice/inventory_adjustment/add_new_stock_line/generate.rs
++++ b/server/service/src/invoice/inventory_adjustment/add_new_stock_line/generate.rs
+@@ -7,16 +7,12 @@ use repository::{
+ use util::constants::INVENTORY_ADJUSTMENT_NAME_CODE;
+ use util::uuid::uuid;
+ 
++use crate::invoice::inventory_adjustment::UpdateInventoryAdjustmentReason;
+ use crate::invoice_line::stock_in_line::{InsertStockInLine, StockInType};
+ use crate::number::next_number;
+ 
+ use super::AddNewStockLine;
+ 
+-pub struct UpdateInventoryAdjustmentReason {
+-    pub reason_id: Option<String>,
+-    pub invoice_line_id: String,
+-}
+-
+ pub struct GenerateResult {
+     pub invoice: InvoiceRow,
+     pub stock_in_line: InsertStockInLine,
+diff --git a/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/generate.rs b/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/generate.rs
+index da7532f28..2917273e7 100644
+--- a/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/generate.rs
++++ b/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/generate.rs
+@@ -1,16 +1,31 @@
+ use chrono::Utc;
+ 
+-use repository::{InvoiceLineRow, InvoiceLineType, NameRowRepository, StockLine, StockLineRow};
+ use repository::{
+     InvoiceRow, InvoiceStatus, InvoiceType, NumberRowType, RepositoryError, StorageConnection,
+ };
++use repository::{NameRowRepository, StockLine, StockLineRow};
+ use util::constants::INVENTORY_ADJUSTMENT_NAME_CODE;
+ use util::uuid::uuid;
+ 
++use crate::invoice::inventory_adjustment::UpdateInventoryAdjustmentReason;
++use crate::invoice_line::stock_in_line::{InsertStockInLine, StockInType};
++use crate::invoice_line::stock_out_line::{InsertStockOutLine, StockOutType};
+ use crate::number::next_number;
++use crate::{i32_to_u32, NullableUpdate};
+ 
+ use super::{AdjustmentType, InsertInventoryAdjustment};
+ 
++pub enum InsertStockInOrOutLine {
++    StockIn(InsertStockInLine),
++    StockOut(InsertStockOutLine),
++}
++
++pub struct GenerateResult {
++    pub invoice: InvoiceRow,
++    pub insert_stock_in_or_out_line: InsertStockInOrOutLine,
++    pub update_inventory_adjustment_reason: UpdateInventoryAdjustmentReason,
++}
++
+ pub fn generate(
+     connection: &StorageConnection,
+     store_id: &str,
+@@ -22,7 +37,7 @@ pub fn generate(
+         inventory_adjustment_reason_id,
+     }: InsertInventoryAdjustment,
+     stock_line: StockLine,
+-) -> Result<(InvoiceRow, InvoiceLineRow, StockLineRow), RepositoryError> {
++) -> Result<GenerateResult, RepositoryError> {
+     let current_datetime = Utc::now().naive_utc();
+ 
+     let inventory_adjustment_name = NameRowRepository::new(connection)
+@@ -79,45 +94,62 @@ pub fn generate(
+         cost_price_per_pack,
+         sell_price_per_pack,
+         note,
++        on_hold,
+         ..
+     } = stock_line.stock_line_row.clone();
+ 
+-    let invoice_line = InvoiceLineRow {
+-        id: uuid(),
+-        invoice_id: invoice.id.clone(),
+-        item_link_id: stock_line.item_row.id,
+-        item_name: stock_line.item_row.name,
+-        item_code: stock_line.item_row.code,
+-        stock_line_id: Some(stock_line_id),
+-        location_id,
+-        batch,
+-        expiry_date,
+-        pack_size,
+-        cost_price_per_pack,
+-        sell_price_per_pack,
+-        total_before_tax: 0.0,
+-        total_after_tax: 0.0,
+-        tax_percentage: None,
+-        r#type: match adjustment_type {
+-            AdjustmentType::Addition => InvoiceLineType::StockIn,
+-            AdjustmentType::Reduction => InvoiceLineType::StockOut,
+-        },
+-        number_of_packs: adjustment,
+-        note,
+-        inventory_adjustment_reason_id,
+-        return_reason_id: None,
+-        foreign_currency_price_before_tax: None,
+-    };
++    let invoice_id = invoice.id.clone();
++    let invoice_line_id = uuid();
+ 
+-    let mut updated_stock_line = stock_line.stock_line_row;
+-
+-    let delta = match adjustment_type {
+-        AdjustmentType::Addition => adjustment,
+-        AdjustmentType::Reduction => -adjustment,
++    let insert_stock_in_or_out_line = match adjustment_type {
++        AdjustmentType::Addition => InsertStockInOrOutLine::StockIn(InsertStockInLine {
++            r#type: StockInType::InventoryAddition,
++            id: invoice_line_id.clone(),
++            invoice_id,
++            stock_line_id: Some(stock_line_id),
++            number_of_packs: adjustment,
++            // From existing stock line
++            item_id: stock_line.item_row.id,
++            location: location_id.map(|id| NullableUpdate { value: Some(id) }),
++            pack_size: i32_to_u32(pack_size),
++            batch,
++            cost_price_per_pack,
++            sell_price_per_pack,
++            expiry_date,
++            stock_on_hold: on_hold,
++            note,
++            // Default
++            barcode: None,
++            total_before_tax: None,
++            tax_percentage: None,
++        }),
++        AdjustmentType::Reduction => InsertStockInOrOutLine::StockOut(InsertStockOutLine {
++            r#type: StockOutType::InventoryReduction,
++            id: invoice_line_id.clone(),
++            invoice_id,
++            stock_line_id,
++            note,
++            number_of_packs: adjustment,
++            // Default
++            total_before_tax: None,
++            tax_percentage: None,
++            location_id: None,
++            batch: None,
++            pack_size: None,
++            expiry_date: None,
++            cost_price_per_pack: None,
++            sell_price_per_pack: None,
++        }),
+     };
+ 
+-    updated_stock_line.available_number_of_packs += delta;
+-    updated_stock_line.total_number_of_packs += delta;
++    let update_inventory_adjustment_reason = UpdateInventoryAdjustmentReason {
++        reason_id: inventory_adjustment_reason_id,
++        invoice_line_id,
++    };
+ 
+-    Ok((invoice, invoice_line, updated_stock_line))
++    Ok(GenerateResult {
++        invoice,
++        insert_stock_in_or_out_line,
++        update_inventory_adjustment_reason,
++    })
+ }
+diff --git a/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/insert.rs b/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/insert.rs
+index 3c8300353..567ae25d3 100644
+--- a/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/insert.rs
++++ b/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/insert.rs
+@@ -2,14 +2,16 @@ use chrono::Utc;
+ use repository::RepositoryError;
+ use repository::{
+     ActivityLogType, Invoice, InvoiceLineRowRepository, InvoiceRow, InvoiceRowRepository,
+-    InvoiceStatus, StockLine, StockLineRowRepository,
++    InvoiceStatus, StockLine,
+ };
+ 
+-use super::generate::generate;
++use super::generate::{generate, GenerateResult, InsertStockInOrOutLine};
+ use super::validate::validate;
+ 
+ use crate::activity_log::activity_log_entry;
+ use crate::invoice::query::get_invoice;
++use crate::invoice_line::stock_in_line::{insert_stock_in_line, InsertStockInLineError};
++use crate::invoice_line::stock_out_line::{insert_stock_out_line, InsertStockOutLineError};
+ use crate::service_provider::ServiceContext;
+ 
+ #[derive(Clone, Debug, PartialEq)]
+@@ -44,6 +46,8 @@ pub enum InsertInventoryAdjustmentError {
+     NewlyCreatedInvoiceDoesNotExist,
+     DatabaseError(RepositoryError),
+     InternalError(String),
++    StockInLineInsertError(InsertStockInLineError),
++    StockOutLineInsertError(InsertStockOutLineError),
+ }
+ 
+ pub fn insert_inventory_adjustment(
+@@ -54,19 +58,41 @@ pub fn insert_inventory_adjustment(
+         .connection
+         .transaction_sync(|connection| {
+             let stock_line = validate(connection, &ctx.store_id, &input)?;
+-            let (new_invoice, invoice_line, stock_line_row) =
+-                generate(connection, &ctx.store_id, &ctx.user_id, input, stock_line)?;
++            let GenerateResult {
++                invoice,
++                insert_stock_in_or_out_line,
++                update_inventory_adjustment_reason,
++            } = generate(connection, &ctx.store_id, &ctx.user_id, input, stock_line)?;
+ 
++            // Create Inventory Adjustment in New status
+             let invoice_row_repo = InvoiceRowRepository::new(connection);
++            invoice_row_repo.upsert_one(&invoice)?;
++
++            // Add invoice line (and update stock line)
++            match insert_stock_in_or_out_line {
++                InsertStockInOrOutLine::StockIn(stock_in_line) => {
++                    insert_stock_in_line(ctx, stock_in_line).map_err(|error| {
++                        InsertInventoryAdjustmentError::StockInLineInsertError(error)
++                    })?;
++                }
++                InsertStockInOrOutLine::StockOut(stock_out_line) => {
++                    insert_stock_out_line(ctx, stock_out_line).map_err(|error| {
++                        InsertInventoryAdjustmentError::StockOutLineInsertError(error)
++                    })?;
++                }
++            }
+ 
+-            invoice_row_repo.upsert_one(&new_invoice)?;
+-            InvoiceLineRowRepository::new(connection).upsert_one(&invoice_line)?;
+-            StockLineRowRepository::new(connection).upsert_one(&stock_line_row)?;
++            // Add inventory adjustment reason to the invoice line
++            let invoice_line_repo = InvoiceLineRowRepository::new(&connection);
++            invoice_line_repo.update_inventory_adjustment_reason_id(
++                &update_inventory_adjustment_reason.invoice_line_id,
++                update_inventory_adjustment_reason.reason_id,
++            )?;
+ 
+             let verified_invoice = InvoiceRow {
+                 status: InvoiceStatus::Verified,
+                 verified_datetime: Some(Utc::now().naive_utc()),
+-                ..new_invoice
++                ..invoice
+             };
+ 
+             invoice_row_repo.upsert_one(&verified_invoice)?;
+@@ -251,9 +277,9 @@ mod test {
+     }
+ 
+     #[actix_rt::test]
+-    async fn insert_inventory_adjustment_success() {
+-        let (_, connection, connection_manager, _) = setup_all(
+-            "insert_inventory_adjustment_success",
++    async fn insert_inventory_adjustment_success_no_reasons() {
++        let (_, _, connection_manager, _) = setup_all(
++            "insert_inventory_adjustment_success_no_reasons",
+             MockDataInserts::all(),
+         )
+         .await;
+@@ -275,6 +301,21 @@ mod test {
+         );
+ 
+         assert!(result.is_ok());
++    }
++
++    #[actix_rt::test]
++    async fn insert_inventory_adjustment_success() {
++        let (_, connection, connection_manager, _) = setup_all(
++            "insert_inventory_adjustment_success",
++            MockDataInserts::all(),
++        )
++        .await;
++
++        let service_provider = ServiceProvider::new(connection_manager, "app_data");
++        let context = service_provider
++            .context(mock_store_a().id, mock_user_account_a().id)
++            .unwrap();
++        let service = service_provider.invoice_service;
+ 
+         // Positive adjustment
+         let created_invoice = service
+@@ -307,12 +348,12 @@ mod test {
+ 
+         assert_eq!(
+             updated_stockline.available_number_of_packs,
+-            mock_stock_line_a().available_number_of_packs + 3.0
++            mock_stock_line_a().available_number_of_packs + 2.0
+         );
+ 
+         assert_eq!(
+             updated_stockline.total_number_of_packs,
+-            mock_stock_line_a().total_number_of_packs + 3.0
++            mock_stock_line_a().total_number_of_packs + 2.0
+         );
+ 
+         // Negative adjustment
+diff --git a/server/service/src/invoice/inventory_adjustment/mod.rs b/server/service/src/invoice/inventory_adjustment/mod.rs
+index f902e9306..53e80bf77 100644
+--- a/server/service/src/invoice/inventory_adjustment/mod.rs
++++ b/server/service/src/invoice/inventory_adjustment/mod.rs
+@@ -2,3 +2,8 @@ pub mod adjust_existing_stock;
+ pub use self::adjust_existing_stock::*;
+ 
+ pub mod add_new_stock_line;
++
++pub struct UpdateInventoryAdjustmentReason {
++    pub reason_id: Option<String>,
++    pub invoice_line_id: String,
++}
+diff --git a/server/service/src/invoice/outbound_return/insert/generate.rs b/server/service/src/invoice/outbound_return/insert/generate.rs
+index 792670362..bc615b2ca 100644
+--- a/server/service/src/invoice/outbound_return/insert/generate.rs
++++ b/server/service/src/invoice/outbound_return/insert/generate.rs
+@@ -80,9 +80,16 @@ pub fn generate(
+             stock_line_id: line.stock_line_id.clone(),
+             number_of_packs: line.number_of_packs.clone(),
+             note: line.note.clone(),
+-            r#type: Some(StockOutType::OutboundReturn),
++            r#type: StockOutType::OutboundReturn,
++            // Default
+             tax_percentage: None,
+             total_before_tax: None,
++            location_id: None,
++            batch: None,
++            pack_size: None,
++            expiry_date: None,
++            cost_price_per_pack: None,
++            sell_price_per_pack: None,
+         })
+         .collect();
+ 
+diff --git a/server/service/src/invoice/outbound_return/update_lines/generate.rs b/server/service/src/invoice/outbound_return/update_lines/generate.rs
+index 10c50544c..7ce2ead9e 100644
+--- a/server/service/src/invoice/outbound_return/update_lines/generate.rs
++++ b/server/service/src/invoice/outbound_return/update_lines/generate.rs
+@@ -43,9 +43,16 @@ pub fn generate(
+             number_of_packs: line.number_of_packs,
+             stock_line_id: line.stock_line_id,
+             note: line.note,
+-            r#type: Some(StockOutType::OutboundReturn),
++            r#type: StockOutType::OutboundReturn,
++            // Default
+             tax_percentage: None,
+             total_before_tax: None,
++            location_id: None,
++            batch: None,
++            pack_size: None,
++            expiry_date: None,
++            cost_price_per_pack: None,
++            sell_price_per_pack: None,
+         })
+         .collect();
+ 
+diff --git a/server/service/src/invoice/outbound_shipment/batch.rs b/server/service/src/invoice/outbound_shipment/batch.rs
+index 1fe182863..6d5d301da 100644
+--- a/server/service/src/invoice/outbound_shipment/batch.rs
++++ b/server/service/src/invoice/outbound_shipment/batch.rs
+@@ -299,7 +299,7 @@ mod test {
+             })]),
+             insert_line: Some(vec![inline_init(|input: &mut InsertStockOutLine| {
+                 input.invoice_id = "new_id".to_string();
+-                input.r#type = Some(StockOutType::OutboundShipment);
++                input.r#type = StockOutType::OutboundShipment;
+                 input.id = "new_line_id".to_string();
+                 input.stock_line_id = mock_stock_line_a().id;
+                 input.number_of_packs = 1.0
+diff --git a/server/service/src/invoice/prescription/batch.rs b/server/service/src/invoice/prescription/batch.rs
+index 1031185c8..a33a04d93 100644
+--- a/server/service/src/invoice/prescription/batch.rs
++++ b/server/service/src/invoice/prescription/batch.rs
+@@ -155,7 +155,7 @@ mod test {
+             })]),
+             insert_line: Some(vec![inline_init(|input: &mut InsertStockOutLine| {
+                 input.invoice_id = "new_id".to_string();
+-                input.r#type = Some(StockOutType::Prescription);
++                input.r#type = StockOutType::Prescription;
+                 input.id = "new_line_id".to_string();
+                 input.stock_line_id = mock_stock_line_a().id;
+                 input.number_of_packs = 1.0
+diff --git a/server/service/src/invoice_line/inbound_shipment_line/delete/mod.rs b/server/service/src/invoice_line/inbound_shipment_line/delete/mod.rs
+deleted file mode 100644
+index e6c00d150..000000000
+--- a/server/service/src/invoice_line/inbound_shipment_line/delete/mod.rs
++++ /dev/null
+@@ -1,222 +0,0 @@
+-use crate::{
+-    invoice::common::generate_invoice_user_id_update, service_provider::ServiceContext, WithDBError,
+-};
+-use repository::{
+-    InvoiceLineRowRepository, InvoiceRowRepository, RepositoryError, StockLineRowRepository,
+-};
+-
+-mod validate;
+-
+-use validate::validate;
+-
+-#[derive(Clone, Debug, PartialEq, Default)]
+-pub struct DeleteInboundShipmentLine {
+-    pub id: String,
+-}
+-
+-type OutError = DeleteInboundShipmentLineError;
+-
+-pub fn delete_inbound_shipment_line(
+-    ctx: &ServiceContext,
+-    input: DeleteInboundShipmentLine,
+-) -> Result<String, OutError> {
+-    let line_id = ctx
+-        .connection
+-        .transaction_sync(|connection| {
+-            let (invoice_row, line) = validate(&input, &ctx.store_id, connection)?;
+-
+-            let delete_batch_id_option = line.stock_line_id.clone();
+-
+-            InvoiceLineRowRepository::new(connection).delete(&line.id)?;
+-
+-            if let Some(id) = delete_batch_id_option {
+-                StockLineRowRepository::new(connection).delete(&id)?;
+-            }
+-
+-            if let Some(invoice_row) = generate_invoice_user_id_update(&ctx.user_id, invoice_row) {
+-                InvoiceRowRepository::new(connection).upsert_one(&invoice_row)?;
+-            }
+-
+-            Ok(line.id) as Result<String, OutError>
+-        })
+-        .map_err(|error| error.to_inner_error())?;
+-    Ok(line_id)
+-}
+-#[derive(Debug, PartialEq)]
+-pub enum DeleteInboundShipmentLineError {
+-    LineDoesNotExist,
+-    DatabaseError(RepositoryError),
+-    InvoiceDoesNotExist,
+-    NotAnInboundShipment,
+-    NotThisStoreInvoice,
+-    CannotEditFinalised,
+-    BatchIsReserved,
+-    NotThisInvoiceLine(String),
+-    LineUsedInStocktake,
+-}
+-
+-impl From<RepositoryError> for DeleteInboundShipmentLineError {
+-    fn from(error: RepositoryError) -> Self {
+-        DeleteInboundShipmentLineError::DatabaseError(error)
+-    }
+-}
+-
+-impl<ERR> From<WithDBError<ERR>> for DeleteInboundShipmentLineError
+-where
+-    ERR: Into<DeleteInboundShipmentLineError>,
+-{
+-    fn from(result: WithDBError<ERR>) -> Self {
+-        match result {
+-            WithDBError::DatabaseError(error) => error.into(),
+-            WithDBError::Error(error) => error.into(),
+-        }
+-    }
+-}
+-
+-#[cfg(test)]
+-mod test {
+-    use chrono::NaiveDate;
+-    use repository::{
+-        mock::{
+-            mock_inbound_shipment_a_invoice_lines, mock_inbound_shipment_b_invoice_lines,
+-            mock_inbound_shipment_c_invoice_lines, mock_store_a, mock_store_b, mock_user_account_a,
+-            MockData, MockDataInserts,
+-        },
+-        test_db::{setup_all, setup_all_with_data},
+-        InvoiceLineRow, InvoiceLineRowRepository, InvoiceLineType,
+-    };
+-    use util::inline_init;
+-
+-    use crate::{
+-        invoice_line::inbound_shipment_line::delete::DeleteInboundShipmentLine,
+-        invoice_line::inbound_shipment_line::DeleteInboundShipmentLineError as ServiceError,
+-        service_provider::ServiceProvider,
+-    };
+-
+-    #[actix_rt::test]
+-    async fn delete_inbound_shipment_line_errors() {
+-        let (_, _, connection_manager, _) = setup_all_with_data(
+-            "delete_inbound_shipment_line_errors",
+-            MockDataInserts::all(),
+-            inline_init(|r: &mut MockData| {
+-                r.invoice_lines = vec![outbound_shipment_e_line()];
+-            }),
+-        )
+-        .await;
+-
+-        fn outbound_shipment_e_line() -> InvoiceLineRow {
+-            inline_init(|r: &mut InvoiceLineRow| {
+-                r.id = String::from("outbound_shipment_e_line_a");
+-                r.invoice_id = String::from("outbound_shipment_e");
+-                r.item_link_id = String::from("item_a");
+-                r.item_name = String::from("Item A");
+-                r.item_code = String::from("item_a_code");
+-                r.stock_line_id = Some(String::from("item_a_line_a"));
+-                r.batch = Some(String::from("item_a_line_a"));
+-                r.expiry_date = Some(NaiveDate::from_ymd_opt(2020, 8, 1).unwrap());
+-                r.pack_size = 1;
+-                r.total_before_tax = 0.87;
+-                r.total_after_tax = 1.0;
+-                r.tax_percentage = Some(15.0);
+-                r.r#type = InvoiceLineType::StockOut;
+-                r.number_of_packs = 10.0;
+-            })
+-        }
+-
+-        let service_provider = ServiceProvider::new(connection_manager, "app_data");
+-        let mut context = service_provider
+-            .context(mock_store_a().id, mock_user_account_a().id)
+-            .unwrap();
+-        let service = service_provider.invoice_line_service;
+-
+-        // LineDoesNotExist
+-        assert_eq!(
+-            service.delete_inbound_shipment_line(
+-                &context,
+-                DeleteInboundShipmentLine {
+-                    id: "invalid".to_owned(),
+-                },
+-            ),
+-            Err(ServiceError::LineDoesNotExist)
+-        );
+-
+-        // NotAnInboundShipment
+-        assert_eq!(
+-            service.delete_inbound_shipment_line(
+-                &context,
+-                DeleteInboundShipmentLine {
+-                    id: outbound_shipment_e_line().id.clone(),
+-                },
+-            ),
+-            Err(ServiceError::NotAnInboundShipment)
+-        );
+-
+-        // CannotEditFinalised
+-        assert_eq!(
+-            service.delete_inbound_shipment_line(
+-                &context,
+-                DeleteInboundShipmentLine {
+-                    id: mock_inbound_shipment_b_invoice_lines()[0].id.clone(),
+-                },
+-            ),
+-            Err(ServiceError::CannotEditFinalised)
+-        );
+-
+-        // BatchIsReserved
+-        assert_eq!(
+-            service.delete_inbound_shipment_line(
+-                &context,
+-                DeleteInboundShipmentLine {
+-                    id: mock_inbound_shipment_a_invoice_lines()[0].id.clone(),
+-                },
+-            ),
+-            Err(ServiceError::BatchIsReserved)
+-        );
+-
+-        // NotThisStoreInvoice
+-        context.store_id = mock_store_b().id;
+-        assert_eq!(
+-            service.delete_inbound_shipment_line(
+-                &context,
+-                DeleteInboundShipmentLine {
+-                    id: mock_inbound_shipment_a_invoice_lines()[0].id.clone()
+-                },
+-            ),
+-            Err(ServiceError::NotThisStoreInvoice)
+-        );
+-
+-        //TODO InvoiceDoesNotExist, NotThisInvoiceLine
+-    }
+-
+-    #[actix_rt::test]
+-    async fn delete_inbound_shipment_line_success() {
+-        let (_, connection, connection_manager, _) = setup_all(
+-            "delete_inbound_shipment_line_success",
+-            MockDataInserts::all(),
+-        )
+-        .await;
+-
+-        let service_provider = ServiceProvider::new(connection_manager, "app_data");
+-        let context = service_provider
+-            .context(mock_store_a().id, mock_user_account_a().id)
+-            .unwrap();
+-        let service = service_provider.invoice_line_service;
+-
+-        let invoice_line_id = service
+-            .delete_inbound_shipment_line(
+-                &context,
+-                DeleteInboundShipmentLine {
+-                    id: mock_inbound_shipment_c_invoice_lines()[2].id.clone(),
+-                },
+-            )
+-            .unwrap();
+-
+-        //test entry has been deleted
+-        assert_eq!(
+-            InvoiceLineRowRepository::new(&connection)
+-                .find_one_by_id_option(&invoice_line_id)
+-                .unwrap(),
+-            None
+-        );
+-    }
+-}
+diff --git a/server/service/src/invoice_line/inbound_shipment_line/delete/validate.rs b/server/service/src/invoice_line/inbound_shipment_line/delete/validate.rs
+deleted file mode 100644
+index 9c4cda347..000000000
+--- a/server/service/src/invoice_line/inbound_shipment_line/delete/validate.rs
++++ /dev/null
+@@ -1,45 +0,0 @@
+-use crate::{
+-    invoice::{check_invoice_exists, check_invoice_is_editable, check_invoice_type, check_store},
+-    invoice_line::{
+-        inbound_shipment_line::check_batch,
+-        validate::{
+-            check_line_belongs_to_invoice, check_line_not_associated_with_stocktake,
+-            check_line_row_exists_option,
+-        },
+-    },
+-};
+-use repository::{InvoiceLineRow, InvoiceRow, InvoiceType, StorageConnection};
+-
+-use super::{DeleteInboundShipmentLine, DeleteInboundShipmentLineError};
+-
+-pub fn validate(
+-    input: &DeleteInboundShipmentLine,
+-    store_id: &str,
+-    connection: &StorageConnection,
+-) -> Result<(InvoiceRow, InvoiceLineRow), DeleteInboundShipmentLineError> {
+-    use DeleteInboundShipmentLineError::*;
+-
+-    let line = check_line_row_exists_option(connection, &input.id)?.ok_or(LineDoesNotExist)?;
+-    let invoice = check_invoice_exists(&line.invoice_id, connection)?.ok_or(InvoiceDoesNotExist)?;
+-
+-    if !check_store(&invoice, store_id) {
+-        return Err(NotThisStoreInvoice);
+-    }
+-    if !check_invoice_type(&invoice, InvoiceType::InboundShipment) {
+-        return Err(NotAnInboundShipment);
+-    }
+-    if !check_invoice_is_editable(&invoice) {
+-        return Err(CannotEditFinalised);
+-    }
+-    if !check_batch(&line, connection)? {
+-        return Err(BatchIsReserved);
+-    }
+-    if !check_line_belongs_to_invoice(&line, &invoice) {
+-        return Err(NotThisInvoiceLine(line.invoice_id));
+-    }
+-    if !check_line_not_associated_with_stocktake(connection, &line.id, store_id.to_string()) {
+-        return Err(LineUsedInStocktake);
+-    }
+-
+-    Ok((invoice, line))
+-}
+diff --git a/server/service/src/invoice_line/inbound_shipment_line/generate.rs b/server/service/src/invoice_line/inbound_shipment_line/generate.rs
+deleted file mode 100644
+index b5038b6eb..000000000
+--- a/server/service/src/invoice_line/inbound_shipment_line/generate.rs
++++ /dev/null
+@@ -1,67 +0,0 @@
+-use repository::{InvoiceLineRow, StockLineRow};
+-use util::uuid::uuid;
+-
+-pub fn convert_stock_line_to_single_pack(stock_line: StockLineRow) -> StockLineRow {
+-    StockLineRow {
+-        total_number_of_packs: stock_line.total_number_of_packs * stock_line.pack_size as f64,
+-        available_number_of_packs: stock_line.available_number_of_packs
+-            * stock_line.pack_size as f64,
+-        cost_price_per_pack: stock_line.cost_price_per_pack / stock_line.pack_size as f64,
+-        sell_price_per_pack: stock_line.sell_price_per_pack / stock_line.pack_size as f64,
+-        pack_size: 1,
+-        ..stock_line
+-    }
+-}
+-
+-pub fn convert_invoice_line_to_single_pack(invoice_line: InvoiceLineRow) -> InvoiceLineRow {
+-    InvoiceLineRow {
+-        number_of_packs: invoice_line.number_of_packs * invoice_line.pack_size as f64,
+-        sell_price_per_pack: invoice_line.sell_price_per_pack / invoice_line.pack_size as f64,
+-        cost_price_per_pack: invoice_line.cost_price_per_pack / invoice_line.pack_size as f64,
+-        pack_size: 1,
+-        ..invoice_line
+-    }
+-}
+-
+-pub fn generate_batch(
+-    store_id: &str,
+-    InvoiceLineRow {
+-        stock_line_id,
+-        item_link_id,
+-        pack_size,
+-        batch,
+-        expiry_date,
+-        sell_price_per_pack,
+-        cost_price_per_pack,
+-        number_of_packs,
+-        location_id,
+-        note,
+-        ..
+-    }: InvoiceLineRow,
+-    keep_existing_batch: bool,
+-    supplier_link_id: &str,
+-) -> StockLineRow {
+-    // Generate new id if requested via parameter or if stock_line_id is not already set on line
+-    let stock_line_id = match (stock_line_id, keep_existing_batch) {
+-        (Some(stock_line_id), true) => stock_line_id,
+-        _ => uuid(),
+-    };
+-
+-    StockLineRow {
+-        id: stock_line_id,
+-        item_link_id,
+-        store_id: store_id.to_string(),
+-        location_id,
+-        batch,
+-        pack_size,
+-        cost_price_per_pack,
+-        sell_price_per_pack,
+-        available_number_of_packs: number_of_packs,
+-        total_number_of_packs: number_of_packs,
+-        expiry_date,
+-        on_hold: false,
+-        note,
+-        supplier_link_id: Some(supplier_link_id.to_string()),
+-        barcode_id: None,
+-    }
+-}
+diff --git a/server/service/src/invoice_line/inbound_shipment_line/insert/generate.rs b/server/service/src/invoice_line/inbound_shipment_line/insert/generate.rs
+deleted file mode 100644
+index dacd2e662..000000000
+--- a/server/service/src/invoice_line/inbound_shipment_line/insert/generate.rs
++++ /dev/null
+@@ -1,124 +0,0 @@
+-use crate::{
+-    invoice::common::{
+-        calculate_foreign_currency_total, calculate_total_after_tax,
+-        generate_invoice_user_id_update,
+-    },
+-    invoice_line::{
+-        generate_batch,
+-        inbound_shipment_line::generate::{
+-            convert_invoice_line_to_single_pack, convert_stock_line_to_single_pack,
+-        },
+-    },
+-    store_preference::get_store_preferences,
+-    u32_to_i32,
+-};
+-use repository::{
+-    InvoiceLineRow, InvoiceLineType, InvoiceRow, InvoiceStatus, ItemRow, RepositoryError,
+-    StockLineRow, StorageConnection,
+-};
+-
+-use super::InsertInboundShipmentLine;
+-
+-pub fn generate(
+-    connection: &StorageConnection,
+-    user_id: &str,
+-    input: InsertInboundShipmentLine,
+-    item_row: ItemRow,
+-    existing_invoice_row: InvoiceRow,
+-) -> Result<(Option<InvoiceRow>, InvoiceLineRow, Option<StockLineRow>), RepositoryError> {
+-    let store_preferences = get_store_preferences(connection, &existing_invoice_row.store_id)?;
+-
+-    let new_line = generate_line(connection, input, item_row, existing_invoice_row.clone())?;
+-
+-    let mut new_line = match store_preferences.pack_to_one {
+-        true => convert_invoice_line_to_single_pack(new_line),
+-        false => new_line,
+-    };
+-
+-    let new_batch_option = if existing_invoice_row.status != InvoiceStatus::New {
+-        let new_batch = generate_batch(
+-            &existing_invoice_row.store_id,
+-            new_line.clone(),
+-            false,
+-            &existing_invoice_row.name_link_id,
+-        );
+-        new_line.stock_line_id = Some(new_batch.id.clone());
+-
+-        let new_batch = match store_preferences.pack_to_one {
+-            true => convert_stock_line_to_single_pack(new_batch),
+-            false => new_batch,
+-        };
+-
+-        Some(new_batch)
+-    } else {
+-        None
+-    };
+-
+-    Ok((
+-        generate_invoice_user_id_update(user_id, existing_invoice_row),
+-        new_line,
+-        new_batch_option,
+-    ))
+-}
+-
+-fn generate_line(
+-    connection: &StorageConnection,
+-    InsertInboundShipmentLine {
+-        id,
+-        invoice_id,
+-        item_id,
+-        pack_size,
+-        batch,
+-        expiry_date,
+-        sell_price_per_pack,
+-        cost_price_per_pack,
+-        number_of_packs,
+-        location,
+-        total_before_tax,
+-        tax_percentage: _,
+-    }: InsertInboundShipmentLine,
+-    ItemRow {
+-        name: item_name,
+-        code: item_code,
+-        ..
+-    }: ItemRow,
+-    InvoiceRow {
+-        tax_percentage,
+-        currency_id,
+-        currency_rate,
+-        ..
+-    }: InvoiceRow,
+-) -> Result<InvoiceLineRow, RepositoryError> {
+-    let total_before_tax = total_before_tax.unwrap_or(cost_price_per_pack * number_of_packs);
+-    let total_after_tax = calculate_total_after_tax(total_before_tax, tax_percentage);
+-    let foreign_currency_price_before_tax = calculate_foreign_currency_total(
+-        connection,
+-        total_before_tax,
+-        currency_id,
+-        &currency_rate,
+-    )?;
+-
+-    Ok(InvoiceLineRow {
+-        id,
+-        invoice_id,
+-        item_link_id: item_id,
+-        location_id: location.map(|l| l.value).unwrap_or_default(),
+-        pack_size: u32_to_i32(pack_size),
+-        batch,
+-        expiry_date,
+-        sell_price_per_pack,
+-        cost_price_per_pack,
+-        r#type: InvoiceLineType::StockIn,
+-        number_of_packs,
+-        item_name,
+-        item_code,
+-        stock_line_id: None,
+-        total_before_tax,
+-        total_after_tax,
+-        tax_percentage,
+-        note: None,
+-        inventory_adjustment_reason_id: None,
+-        return_reason_id: None,
+-        foreign_currency_price_before_tax,
+-    })
+-}
+diff --git a/server/service/src/invoice_line/inbound_shipment_line/insert/mod.rs b/server/service/src/invoice_line/inbound_shipment_line/insert/mod.rs
+deleted file mode 100644
+index bf890cd53..000000000
+--- a/server/service/src/invoice_line/inbound_shipment_line/insert/mod.rs
++++ /dev/null
+@@ -1,351 +0,0 @@
+-use crate::{
+-    invoice_line::query::get_invoice_line, service_provider::ServiceContext, NullableUpdate,
+-    WithDBError,
+-};
+-use chrono::NaiveDate;
+-use repository::{
+-    InvoiceLine, InvoiceLineRowRepository, InvoiceRowRepository, RepositoryError,
+-    StockLineRowRepository,
+-};
+-
+-mod generate;
+-mod validate;
+-
+-use generate::generate;
+-use validate::validate;
+-
+-#[derive(Clone, Debug, Default, PartialEq)]
+-pub struct InsertInboundShipmentLine {
+-    pub id: String,
+-    pub invoice_id: String,
+-    pub item_id: String,
+-    pub location: Option<NullableUpdate<String>>,
+-    pub pack_size: u32,
+-    pub batch: Option<String>,
+-    pub cost_price_per_pack: f64,
+-    pub sell_price_per_pack: f64,
+-    pub expiry_date: Option<NaiveDate>,
+-    pub number_of_packs: f64,
+-    pub total_before_tax: Option<f64>,
+-    pub tax_percentage: Option<f64>,
+-}
+-
+-type OutError = InsertInboundShipmentLineError;
+-
+-pub fn insert_inbound_shipment_line(
+-    ctx: &ServiceContext,
+-    input: InsertInboundShipmentLine,
+-) -> Result<InvoiceLine, OutError> {
+-    let new_line = ctx
+-        .connection
+-        .transaction_sync(|connection| {
+-            let (item, invoice) = validate(&input, &ctx.store_id, connection)?;
+-            let (invoice_row_option, new_line, new_batch_option) =
+-                generate(connection, &ctx.user_id, input, item, invoice)?;
+-
+-            if let Some(new_batch) = new_batch_option {
+-                StockLineRowRepository::new(connection).upsert_one(&new_batch)?;
+-            }
+-            InvoiceLineRowRepository::new(connection).upsert_one(&new_line)?;
+-
+-            if let Some(invoice_row) = invoice_row_option {
+-                InvoiceRowRepository::new(connection).upsert_one(&invoice_row)?;
+-            }
+-
+-            get_invoice_line(ctx, &new_line.id)
+-                .map_err(OutError::DatabaseError)?
+-                .ok_or(OutError::NewlyCreatedLineDoesNotExist)
+-        })
+-        .map_err(|error| error.to_inner_error())?;
+-    Ok(new_line)
+-}
+-
+-#[derive(Debug, PartialEq)]
+-pub enum InsertInboundShipmentLineError {
+-    LineAlreadyExists,
+-    DatabaseError(RepositoryError),
+-    InvoiceDoesNotExist,
+-    NotAnInboundShipment,
+-    NotThisStoreInvoice,
+-    CannotEditFinalised,
+-    LocationDoesNotExist,
+-    ItemNotFound,
+-    PackSizeBelowOne,
+-    NumberOfPacksBelowZero,
+-    NewlyCreatedLineDoesNotExist,
+-}
+-
+-impl From<RepositoryError> for InsertInboundShipmentLineError {
+-    fn from(error: RepositoryError) -> Self {
+-        InsertInboundShipmentLineError::DatabaseError(error)
+-    }
+-}
+-
+-impl<ERR> From<WithDBError<ERR>> for InsertInboundShipmentLineError
+-where
+-    ERR: Into<InsertInboundShipmentLineError>,
+-{
+-    fn from(result: WithDBError<ERR>) -> Self {
+-        match result {
+-            WithDBError::DatabaseError(error) => error.into(),
+-            WithDBError::Error(error) => error.into(),
+-        }
+-    }
+-}
+-
+-#[cfg(test)]
+-mod test {
+-    use repository::{
+-        mock::{
+-            mock_inbound_shipment_a_invoice_lines, mock_inbound_shipment_c,
+-            mock_inbound_shipment_c_invoice_lines, mock_item_a, mock_outbound_shipment_e,
+-            mock_store_a, mock_store_b, mock_user_account_a, MockDataInserts,
+-        },
+-        test_db::setup_all,
+-        InvoiceLineRowRepository, StorePreferenceRow, StorePreferenceRowRepository,
+-    };
+-    use util::{inline_edit, inline_init};
+-
+-    use crate::{
+-        invoice_line::inbound_shipment_line::{
+-            insert::InsertInboundShipmentLine, InsertInboundShipmentLineError as ServiceError,
+-        },
+-        service_provider::ServiceProvider,
+-        NullableUpdate,
+-    };
+-
+-    #[actix_rt::test]
+-    async fn insert_inbound_shipment_line_errors() {
+-        let (_, _, connection_manager, _) = setup_all(
+-            "insert_inbound_shipment_line_errors",
+-            MockDataInserts::all(),
+-        )
+-        .await;
+-
+-        let service_provider = ServiceProvider::new(connection_manager, "app_data");
+-        let mut context = service_provider
+-            .context(mock_store_a().id, mock_user_account_a().id)
+-            .unwrap();
+-        let service = service_provider.invoice_line_service;
+-
+-        // LineAlreadyExists
+-        assert_eq!(
+-            service.insert_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut InsertInboundShipmentLine| {
+-                    r.id = mock_inbound_shipment_a_invoice_lines()[0].id.clone();
+-                    r.invoice_id = mock_inbound_shipment_c_invoice_lines()[0]
+-                        .invoice_id
+-                        .clone();
+-                }),
+-            ),
+-            Err(ServiceError::LineAlreadyExists)
+-        );
+-
+-        // InvoiceDoesNotExist
+-        assert_eq!(
+-            service.insert_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut InsertInboundShipmentLine| {
+-                    r.id = "new invoice line id".to_string();
+-                    r.invoice_id = "new invoice id".to_string();
+-                    r.item_id = mock_item_a().id.clone();
+-                    r.pack_size = 1;
+-                    r.number_of_packs = 1.0;
+-                }),
+-            ),
+-            Err(ServiceError::InvoiceDoesNotExist)
+-        );
+-
+-        // NotAnInboundShipment
+-        assert_eq!(
+-            service.insert_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut InsertInboundShipmentLine| {
+-                    r.id = "new invoice line id".to_string();
+-                    r.invoice_id = mock_outbound_shipment_e().id;
+-                    r.item_id = mock_item_a().id.clone();
+-                    r.pack_size = 1;
+-                    r.number_of_packs = 1.0;
+-                }),
+-            ),
+-            Err(ServiceError::NotAnInboundShipment)
+-        );
+-
+-        // LocationDoesNotExist
+-        assert_eq!(
+-            service.insert_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut InsertInboundShipmentLine| {
+-                    r.id = "new invoice line id".to_string();
+-                    r.invoice_id = mock_inbound_shipment_c_invoice_lines()[0]
+-                        .invoice_id
+-                        .clone();
+-                    r.location = Some(NullableUpdate {
+-                        value: Some("invalid".to_string()),
+-                    });
+-                    r.item_id = mock_item_a().id.clone();
+-                    r.pack_size = 1;
+-                    r.number_of_packs = 1.0;
+-                }),
+-            ),
+-            Err(ServiceError::LocationDoesNotExist)
+-        );
+-
+-        // ItemNotFound
+-        assert_eq!(
+-            service.insert_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut InsertInboundShipmentLine| {
+-                    r.id = "new invoice line id".to_string();
+-                    r.invoice_id = mock_inbound_shipment_c_invoice_lines()[0]
+-                        .invoice_id
+-                        .clone();
+-                    r.item_id = "invalid".to_string();
+-                    r.pack_size = 1;
+-                    r.number_of_packs = 1.0;
+-                }),
+-            ),
+-            Err(ServiceError::ItemNotFound)
+-        );
+-
+-        // PackSizeBelowOne
+-        assert_eq!(
+-            service.insert_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut InsertInboundShipmentLine| {
+-                    r.id = "new invoice line id".to_string();
+-                    r.invoice_id = mock_inbound_shipment_c_invoice_lines()[0]
+-                        .invoice_id
+-                        .clone();
+-                    r.item_id = mock_item_a().id.clone();
+-                    r.pack_size = 0;
+-                    r.number_of_packs = 1.0;
+-                }),
+-            ),
+-            Err(ServiceError::PackSizeBelowOne)
+-        );
+-
+-        // NumberOfPacksBelowZero
+-        assert_eq!(
+-            service.insert_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut InsertInboundShipmentLine| {
+-                    r.id = "new invoice line id".to_string();
+-                    r.invoice_id = mock_inbound_shipment_c_invoice_lines()[0]
+-                        .invoice_id
+-                        .clone();
+-                    r.item_id = mock_item_a().id.clone();
+-                    r.pack_size = 1;
+-                    r.number_of_packs = -1.0;
+-                }),
+-            ),
+-            Err(ServiceError::NumberOfPacksBelowZero)
+-        );
+-
+-        // NotThisStoreInvoice
+-        context.store_id = mock_store_b().id;
+-        assert_eq!(
+-            service.insert_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut InsertInboundShipmentLine| {
+-                    r.id = "new invoice line id".to_string();
+-                    r.invoice_id = mock_inbound_shipment_c().id.clone();
+-                    r.item_id = mock_item_a().id.clone();
+-                    r.pack_size = 1;
+-                    r.number_of_packs = 1.0;
+-                }),
+-            ),
+-            Err(ServiceError::NotThisStoreInvoice)
+-        );
+-
+-        //TODO NewlyCreatedLineDoesNotExist
+-    }
+-
+-    #[actix_rt::test]
+-    async fn insert_inbound_shipment_line_success() {
+-        let (_, connection, connection_manager, _) = setup_all(
+-            "insert_inbound_shipment_line_success",
+-            MockDataInserts::all(),
+-        )
+-        .await;
+-
+-        let service_provider = ServiceProvider::new(connection_manager, "app_data");
+-        let context = service_provider
+-            .context(mock_store_a().id, mock_user_account_a().id)
+-            .unwrap();
+-        let service = service_provider.invoice_line_service;
+-
+-        service
+-            .insert_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut InsertInboundShipmentLine| {
+-                    r.id = "new invoice line id".to_string();
+-                    r.invoice_id = mock_inbound_shipment_c_invoice_lines()[0]
+-                        .invoice_id
+-                        .clone();
+-                    r.item_id = mock_item_a().id.clone();
+-                    r.pack_size = 1;
+-                    r.number_of_packs = 1.0;
+-                }),
+-            )
+-            .unwrap();
+-
+-        let inbound_line = InvoiceLineRowRepository::new(&connection)
+-            .find_one_by_id("new invoice line id")
+-            .unwrap();
+-
+-        assert_eq!(
+-            inbound_line,
+-            inline_edit(&inbound_line, |mut u| {
+-                u.id = "new invoice line id".to_string();
+-                u.item_link_id = mock_item_a().id.clone();
+-                u.pack_size = 1;
+-                u.number_of_packs = 1.0;
+-                u
+-            })
+-        );
+-
+-        // pack to one preference is set
+-        let pack_to_one = StorePreferenceRow {
+-            id: mock_store_a().id.clone(),
+-            pack_to_one: true,
+-            ..StorePreferenceRow::default()
+-        };
+-        StorePreferenceRowRepository::new(&connection)
+-            .upsert_one(&pack_to_one)
+-            .unwrap();
+-
+-        service
+-            .insert_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut InsertInboundShipmentLine| {
+-                    r.id = "new invoice line pack to one".to_string();
+-                    r.invoice_id = mock_inbound_shipment_c_invoice_lines()[0]
+-                        .invoice_id
+-                        .clone();
+-                    r.item_id = mock_item_a().id.clone();
+-                    r.pack_size = 10;
+-                    r.number_of_packs = 20.0;
+-                    r.sell_price_per_pack = 100.0;
+-                }),
+-            )
+-            .unwrap();
+-
+-        let inbound_line = InvoiceLineRowRepository::new(&connection)
+-            .find_one_by_id("new invoice line pack to one")
+-            .unwrap();
+-
+-        assert_eq!(
+-            inbound_line,
+-            inline_edit(&inbound_line, |mut u| {
+-                u.id = "new invoice line pack to one".to_string();
+-                u.item_link_id = mock_item_a().id.clone();
+-                u.pack_size = 1;
+-                u.number_of_packs = 200.0;
+-                u.sell_price_per_pack = 10.0;
+-                u
+-            })
+-        );
+-    }
+-}
+diff --git a/server/service/src/invoice_line/inbound_shipment_line/insert/validate.rs b/server/service/src/invoice_line/inbound_shipment_line/insert/validate.rs
+deleted file mode 100644
+index 8bee2e542..000000000
+--- a/server/service/src/invoice_line/inbound_shipment_line/insert/validate.rs
++++ /dev/null
+@@ -1,54 +0,0 @@
+-use crate::{
+-    invoice::{check_invoice_exists, check_invoice_is_editable, check_invoice_type, check_store},
+-    invoice_line::{
+-        check_location_exists,
+-        inbound_shipment_line::check_pack_size,
+-        validate::{check_item_exists, check_line_does_not_exist, check_number_of_packs},
+-    },
+-};
+-use repository::{InvoiceRow, InvoiceType, ItemRow, StorageConnection};
+-
+-use super::{InsertInboundShipmentLine, InsertInboundShipmentLineError};
+-
+-pub fn validate(
+-    input: &InsertInboundShipmentLine,
+-    store_id: &str,
+-    connection: &StorageConnection,
+-) -> Result<(ItemRow, InvoiceRow), InsertInboundShipmentLineError> {
+-    use InsertInboundShipmentLineError::*;
+-
+-    if !check_line_does_not_exist(connection, &input.id)? {
+-        return Err(LineAlreadyExists);
+-    }
+-    if !check_pack_size(Some(input.pack_size)) {
+-        return Err(PackSizeBelowOne);
+-    }
+-    if !check_number_of_packs(Some(input.number_of_packs)) {
+-        return Err(NumberOfPacksBelowZero);
+-    }
+-
+-    let item = check_item_exists(connection, &input.item_id)?.ok_or(ItemNotFound)?;
+-    if let Some(location) = &input.location {
+-        if !check_location_exists(&location.value, connection)? {
+-            return Err(LocationDoesNotExist);
+-        }
+-    }
+-
+-    let invoice =
+-        check_invoice_exists(&input.invoice_id, connection)?.ok_or(InvoiceDoesNotExist)?;
+-
+-    if !check_store(&invoice, store_id) {
+-        return Err(NotThisStoreInvoice);
+-    };
+-    if !check_invoice_type(&invoice, InvoiceType::InboundShipment) {
+-        return Err(NotAnInboundShipment);
+-    }
+-    if !check_invoice_is_editable(&invoice) {
+-        return Err(CannotEditFinalised);
+-    }
+-
+-    // TODO: StockLineDoesNotBelongToCurrentStore
+-    // TODO: LocationDoesNotBelongToCurrentStore
+-
+-    Ok((item, invoice))
+-}
+diff --git a/server/service/src/invoice_line/inbound_shipment_line/mod.rs b/server/service/src/invoice_line/inbound_shipment_line/mod.rs
+deleted file mode 100644
+index 74be8c3ff..000000000
+--- a/server/service/src/invoice_line/inbound_shipment_line/mod.rs
++++ /dev/null
+@@ -1,11 +0,0 @@
+-pub mod delete;
+-pub mod generate;
+-pub mod insert;
+-pub mod update;
+-pub mod validate;
+-
+-pub use self::delete::*;
+-pub use self::generate::*;
+-pub use self::insert::*;
+-pub use self::update::*;
+-pub use self::validate::*;
+diff --git a/server/service/src/invoice_line/inbound_shipment_line/update/generate.rs b/server/service/src/invoice_line/inbound_shipment_line/update/generate.rs
+deleted file mode 100644
+index cbf68b728..000000000
+--- a/server/service/src/invoice_line/inbound_shipment_line/update/generate.rs
++++ /dev/null
+@@ -1,148 +0,0 @@
+-use crate::{
+-    invoice::common::{
+-        calculate_foreign_currency_total, calculate_total_after_tax,
+-        generate_invoice_user_id_update,
+-    },
+-    invoice_line::inbound_shipment_line::{
+-        generate::convert_invoice_line_to_single_pack, generate_batch,
+-    },
+-    store_preference::get_store_preferences,
+-    u32_to_i32,
+-};
+-use repository::{
+-    InvoiceLine, InvoiceLineRow, InvoiceRow, InvoiceStatus, ItemRow, RepositoryError, StockLineRow,
+-    StorageConnection,
+-};
+-
+-use super::UpdateInboundShipmentLine;
+-
+-pub fn generate(
+-    connection: &StorageConnection,
+-    user_id: &str,
+-    input: UpdateInboundShipmentLine,
+-    current_line: InvoiceLine,
+-    new_item_option: Option<ItemRow>,
+-    existing_invoice_row: InvoiceRow,
+-) -> Result<
+-    (
+-        Option<InvoiceRow>,
+-        InvoiceLineRow,
+-        Option<StockLineRow>,
+-        Option<String>,
+-    ),
+-    RepositoryError,
+-> {
+-    let store_preferences = get_store_preferences(connection, &existing_invoice_row.store_id)?;
+-
+-    let batch_to_delete_id = get_batch_to_delete_id(&current_line, &new_item_option);
+-
+-    let update_line = generate_line(
+-        connection,
+-        input,
+-        current_line.invoice_line_row,
+-        new_item_option,
+-        existing_invoice_row.currency_id.clone(),
+-        &existing_invoice_row.currency_rate,
+-    )?;
+-
+-    let mut update_line = match store_preferences.pack_to_one {
+-        true => convert_invoice_line_to_single_pack(update_line),
+-        false => update_line,
+-    };
+-
+-    let upsert_batch_option = if existing_invoice_row.status != InvoiceStatus::New {
+-        let new_batch = generate_batch(
+-            &existing_invoice_row.store_id,
+-            update_line.clone(),
+-            batch_to_delete_id.is_none(),
+-            &existing_invoice_row.name_link_id,
+-        );
+-        update_line.stock_line_id = Some(new_batch.id.clone());
+-        Some(new_batch)
+-    } else {
+-        None
+-    };
+-
+-    Ok((
+-        generate_invoice_user_id_update(user_id, existing_invoice_row),
+-        update_line,
+-        upsert_batch_option,
+-        batch_to_delete_id,
+-    ))
+-}
+-
+-fn get_batch_to_delete_id(
+-    current_line: &InvoiceLine,
+-    new_item_option: &Option<ItemRow>,
+-) -> Option<String> {
+-    if let (Some(new_item), Some(stock_line_id)) = (
+-        new_item_option,
+-        &current_line.invoice_line_row.stock_line_id,
+-    ) {
+-        if new_item.id != current_line.item_row.id {
+-            return Some(stock_line_id.clone());
+-        }
+-    }
+-    None
+-}
+-
+-fn generate_line(
+-    connection: &StorageConnection,
+-    UpdateInboundShipmentLine {
+-        pack_size,
+-        batch,
+-        cost_price_per_pack,
+-        sell_price_per_pack,
+-        expiry_date,
+-        number_of_packs,
+-        location,
+-        id: _,
+-        item_id: _,
+-        total_before_tax,
+-        tax,
+-    }: UpdateInboundShipmentLine,
+-    current_line: InvoiceLineRow,
+-    new_item_option: Option<ItemRow>,
+-    currency_id: Option<String>,
+-    currency_rate: &f64,
+-) -> Result<InvoiceLineRow, RepositoryError> {
+-    let mut update_line = current_line;
+-
+-    update_line.pack_size = pack_size.map(u32_to_i32).unwrap_or(update_line.pack_size);
+-    update_line.batch = batch.or(update_line.batch);
+-    update_line.location_id = location.map(|l| l.value).unwrap_or(update_line.location_id);
+-    update_line.expiry_date = expiry_date.or(update_line.expiry_date);
+-    update_line.sell_price_per_pack =
+-        sell_price_per_pack.unwrap_or(update_line.sell_price_per_pack);
+-    update_line.cost_price_per_pack =
+-        cost_price_per_pack.unwrap_or(update_line.cost_price_per_pack);
+-    update_line.number_of_packs = number_of_packs.unwrap_or(update_line.number_of_packs);
+-    update_line.tax_percentage = tax
+-        .map(|tax| tax.percentage)
+-        .unwrap_or(update_line.tax_percentage);
+-    update_line.foreign_currency_price_before_tax = calculate_foreign_currency_total(
+-        connection,
+-        update_line.total_before_tax,
+-        currency_id,
+-        currency_rate,
+-    )?;
+-
+-    if let Some(item) = new_item_option {
+-        update_line.item_link_id = item.id;
+-        update_line.item_code = item.code;
+-        update_line.item_name = item.name;
+-    }
+-
+-    update_line.total_before_tax = if let Some(total_before_tax) = total_before_tax {
+-        total_before_tax
+-    } else if number_of_packs.is_some() || cost_price_per_pack.is_some() {
+-        update_line.cost_price_per_pack * update_line.number_of_packs
+-    } else {
+-        update_line.total_before_tax
+-    };
+-
+-    update_line.total_after_tax =
+-        calculate_total_after_tax(update_line.total_before_tax, update_line.tax_percentage);
+-
+-    Ok(update_line)
+-}
+diff --git a/server/service/src/invoice_line/inbound_shipment_line/update/mod.rs b/server/service/src/invoice_line/inbound_shipment_line/update/mod.rs
+deleted file mode 100644
+index 990b78f8c..000000000
+--- a/server/service/src/invoice_line/inbound_shipment_line/update/mod.rs
++++ /dev/null
+@@ -1,353 +0,0 @@
+-use crate::{
+-    activity_log::activity_log_entry,
+-    invoice_line::{query::get_invoice_line, ShipmentTaxUpdate},
+-    service_provider::ServiceContext,
+-    NullableUpdate, WithDBError,
+-};
+-use chrono::NaiveDate;
+-use repository::{
+-    ActivityLogType, InvoiceLine, InvoiceLineRowRepository, InvoiceRowRepository, RepositoryError,
+-    StockLineRowRepository,
+-};
+-
+-mod generate;
+-mod validate;
+-
+-use generate::generate;
+-use validate::validate;
+-
+-#[derive(Clone, Debug, Default, PartialEq)]
+-pub struct UpdateInboundShipmentLine {
+-    pub id: String,
+-    pub item_id: Option<String>,
+-    pub location: Option<NullableUpdate<String>>,
+-    pub pack_size: Option<u32>,
+-    pub batch: Option<String>,
+-    pub cost_price_per_pack: Option<f64>,
+-    pub sell_price_per_pack: Option<f64>,
+-    pub expiry_date: Option<NaiveDate>,
+-    pub number_of_packs: Option<f64>,
+-    pub total_before_tax: Option<f64>,
+-    pub tax: Option<ShipmentTaxUpdate>,
+-}
+-
+-type OutError = UpdateInboundShipmentLineError;
+-
+-pub fn update_inbound_shipment_line(
+-    ctx: &ServiceContext,
+-    input: UpdateInboundShipmentLine,
+-) -> Result<InvoiceLine, OutError> {
+-    let updated_line = ctx
+-        .connection
+-        .transaction_sync(|connection| {
+-            let (line, item, invoice) = validate(&input, &ctx.store_id, connection)?;
+-
+-            let (invoice_row_option, updated_line, upsert_batch_option, delete_batch_id_option) =
+-                generate(
+-                    connection,
+-                    &ctx.user_id,
+-                    input.clone(),
+-                    line.clone(),
+-                    item,
+-                    invoice.clone(),
+-                )?;
+-
+-            let stock_line_repository = StockLineRowRepository::new(connection);
+-
+-            if let Some(upsert_batch) = upsert_batch_option {
+-                stock_line_repository.upsert_one(&upsert_batch)?;
+-            }
+-
+-            InvoiceLineRowRepository::new(connection).upsert_one(&updated_line)?;
+-
+-            if let Some(id) = delete_batch_id_option {
+-                stock_line_repository.delete(&id)?;
+-            }
+-
+-            if let Some(invoice_row) = invoice_row_option {
+-                InvoiceRowRepository::new(connection).upsert_one(&invoice_row)?;
+-            }
+-
+-            if let Some(number_of_packs) = input.number_of_packs {
+-                if number_of_packs == 0.0 {
+-                    activity_log_entry(
+-                        ctx,
+-                        ActivityLogType::QuantityForLineHasBeenSetToZero,
+-                        Some(invoice.id),
+-                        Some(updated_line.batch.unwrap_or_default() + " " + &updated_line.id),
+-                        None,
+-                    )?;
+-                }
+-            }
+-
+-            get_invoice_line(ctx, &updated_line.id)
+-                .map_err(OutError::DatabaseError)?
+-                .ok_or(OutError::UpdatedLineDoesNotExist)
+-        })
+-        .map_err(|error| error.to_inner_error())?;
+-
+-    Ok(updated_line)
+-}
+-
+-#[derive(Debug, PartialEq)]
+-pub enum UpdateInboundShipmentLineError {
+-    LineDoesNotExist,
+-    DatabaseError(RepositoryError),
+-    InvoiceDoesNotExist,
+-    NotAnInboundShipment,
+-    NotThisStoreInvoice,
+-    CannotEditFinalised,
+-    LocationDoesNotExist,
+-    ItemNotFound,
+-    PackSizeBelowOne,
+-    NumberOfPacksBelowZero,
+-    BatchIsReserved,
+-    UpdatedLineDoesNotExist,
+-    NotThisInvoiceLine(String),
+-}
+-
+-impl From<RepositoryError> for UpdateInboundShipmentLineError {
+-    fn from(error: RepositoryError) -> Self {
+-        UpdateInboundShipmentLineError::DatabaseError(error)
+-    }
+-}
+-
+-impl<ERR> From<WithDBError<ERR>> for UpdateInboundShipmentLineError
+-where
+-    ERR: Into<UpdateInboundShipmentLineError>,
+-{
+-    fn from(result: WithDBError<ERR>) -> Self {
+-        match result {
+-            WithDBError::DatabaseError(error) => error.into(),
+-            WithDBError::Error(error) => error.into(),
+-        }
+-    }
+-}
+-
+-#[cfg(test)]
+-mod test {
+-    use repository::{
+-        mock::{
+-            mock_inbound_shipment_a_invoice_lines, mock_inbound_shipment_b_invoice_lines,
+-            mock_inbound_shipment_c_invoice_lines, mock_item_a, mock_store_a, mock_store_b,
+-            mock_user_account_a, MockDataInserts,
+-        },
+-        test_db::setup_all,
+-        InvoiceLineRowRepository, StorePreferenceRow, StorePreferenceRowRepository,
+-    };
+-    use util::{inline_edit, inline_init};
+-
+-    use crate::{
+-        invoice_line::inbound_shipment_line::{
+-            update::UpdateInboundShipmentLine, UpdateInboundShipmentLineError as ServiceError,
+-        },
+-        service_provider::ServiceProvider,
+-        NullableUpdate,
+-    };
+-
+-    #[actix_rt::test]
+-    async fn update_inbound_shipment_line_errors() {
+-        let (_, _, connection_manager, _) = setup_all(
+-            "update_inbound_shipment_line_errors",
+-            MockDataInserts::all(),
+-        )
+-        .await;
+-
+-        let service_provider = ServiceProvider::new(connection_manager, "app_data");
+-        let mut context = service_provider
+-            .context(mock_store_a().id, mock_user_account_a().id)
+-            .unwrap();
+-        let service = service_provider.invoice_line_service;
+-
+-        // LineDoesNotExist
+-        assert_eq!(
+-            service.update_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut UpdateInboundShipmentLine| {
+-                    r.id = "invalid".to_string();
+-                }),
+-            ),
+-            Err(ServiceError::LineDoesNotExist)
+-        );
+-
+-        // LocationDoesNotExist
+-        assert_eq!(
+-            service.update_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut UpdateInboundShipmentLine| {
+-                    r.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
+-                    r.location = Some(NullableUpdate {
+-                        value: Some("invalid".to_string()),
+-                    });
+-                }),
+-            ),
+-            Err(ServiceError::LocationDoesNotExist)
+-        );
+-
+-        // ItemNotFound
+-        assert_eq!(
+-            service.update_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut UpdateInboundShipmentLine| {
+-                    r.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
+-                    r.item_id = Some("invalid".to_string());
+-                    r.pack_size = Some(1);
+-                    r.number_of_packs = Some(1.0);
+-                }),
+-            ),
+-            Err(ServiceError::ItemNotFound)
+-        );
+-
+-        // PackSizeBelowOne
+-        assert_eq!(
+-            service.update_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut UpdateInboundShipmentLine| {
+-                    r.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
+-                    r.item_id = Some(mock_item_a().id.clone());
+-                    r.pack_size = Some(0);
+-                    r.number_of_packs = Some(1.0);
+-                }),
+-            ),
+-            Err(ServiceError::PackSizeBelowOne)
+-        );
+-
+-        // NumberOfPacksBelowOne
+-        assert_eq!(
+-            service.update_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut UpdateInboundShipmentLine| {
+-                    r.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
+-                    r.item_id = Some(mock_item_a().id.clone());
+-                    r.pack_size = Some(1);
+-                    r.number_of_packs = Some(-1.0);
+-                }),
+-            ),
+-            Err(ServiceError::NumberOfPacksBelowZero)
+-        );
+-
+-        // CannotEditFinalised
+-        assert_eq!(
+-            service.update_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut UpdateInboundShipmentLine| {
+-                    r.id = mock_inbound_shipment_b_invoice_lines()[0].id.clone();
+-                    r.item_id = Some(mock_item_a().id.clone());
+-                    r.pack_size = Some(1);
+-                    r.number_of_packs = Some(1.0);
+-                }),
+-            ),
+-            Err(ServiceError::CannotEditFinalised)
+-        );
+-
+-        // BatchIsReserved
+-        assert_eq!(
+-            service.update_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut UpdateInboundShipmentLine| {
+-                    r.id = mock_inbound_shipment_a_invoice_lines()[0].id.clone();
+-                    r.item_id = Some(mock_item_a().id.clone());
+-                    r.pack_size = Some(1);
+-                    r.number_of_packs = Some(1.0);
+-                }),
+-            ),
+-            Err(ServiceError::BatchIsReserved)
+-        );
+-
+-        // NotThisStoreInvoice
+-        context.store_id = mock_store_b().id;
+-        assert_eq!(
+-            service.update_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut UpdateInboundShipmentLine| {
+-                    r.id = mock_inbound_shipment_a_invoice_lines()[0].id.clone();
+-                    r.item_id = Some(mock_item_a().id.clone());
+-                    r.pack_size = Some(1);
+-                    r.number_of_packs = Some(1.0);
+-                }),
+-            ),
+-            Err(ServiceError::NotThisStoreInvoice)
+-        );
+-    }
+-
+-    #[actix_rt::test]
+-    async fn update_inbound_shipment_line_success() {
+-        let (_, connection, connection_manager, _) = setup_all(
+-            "update_inbound_shipment_line_success",
+-            MockDataInserts::all(),
+-        )
+-        .await;
+-
+-        let service_provider = ServiceProvider::new(connection_manager, "app_data");
+-        let context = service_provider
+-            .context(mock_store_a().id, mock_user_account_a().id)
+-            .unwrap();
+-        let service = service_provider.invoice_line_service;
+-
+-        service
+-            .update_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut UpdateInboundShipmentLine| {
+-                    r.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
+-                    r.item_id = Some(mock_item_a().id.clone());
+-                    r.pack_size = Some(2);
+-                    r.number_of_packs = Some(3.0);
+-                }),
+-            )
+-            .unwrap();
+-
+-        let inbound_line_update = InvoiceLineRowRepository::new(&connection)
+-            .find_one_by_id(&mock_inbound_shipment_c_invoice_lines()[0].id.clone())
+-            .unwrap();
+-
+-        assert_eq!(
+-            inbound_line_update,
+-            inline_edit(&inbound_line_update, |mut u| {
+-                u.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
+-                u.item_link_id = mock_item_a().id.clone();
+-                u.pack_size = 2;
+-                u.number_of_packs = 3.0;
+-                u
+-            })
+-        );
+-
+-        // pack to one preference is set
+-        let pack_to_one = StorePreferenceRow {
+-            id: mock_store_a().id.clone(),
+-            pack_to_one: true,
+-            ..StorePreferenceRow::default()
+-        };
+-        StorePreferenceRowRepository::new(&connection)
+-            .upsert_one(&pack_to_one)
+-            .unwrap();
+-
+-        service
+-            .update_inbound_shipment_line(
+-                &context,
+-                inline_init(|r: &mut UpdateInboundShipmentLine| {
+-                    r.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
+-                    r.pack_size = Some(20);
+-                    r.number_of_packs = Some(20.0);
+-                    r.sell_price_per_pack = Some(100.0);
+-                    r.cost_price_per_pack = Some(60.0);
+-                }),
+-            )
+-            .unwrap();
+-
+-        let inbound_line = InvoiceLineRowRepository::new(&connection)
+-            .find_one_by_id(&mock_inbound_shipment_c_invoice_lines()[0].id.clone())
+-            .unwrap();
+-
+-        assert_eq!(
+-            inbound_line,
+-            inline_edit(&inbound_line, |mut u| {
+-                u.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
+-                u.pack_size = 1;
+-                u.number_of_packs = 400.0;
+-                u.sell_price_per_pack = 5.0;
+-                u.cost_price_per_pack = 3.0;
+-                u
+-            })
+-        );
+-    }
+-}
+diff --git a/server/service/src/invoice_line/inbound_shipment_line/update/validate.rs b/server/service/src/invoice_line/inbound_shipment_line/update/validate.rs
+deleted file mode 100644
+index d7d2124a4..000000000
+--- a/server/service/src/invoice_line/inbound_shipment_line/update/validate.rs
++++ /dev/null
+@@ -1,77 +0,0 @@
+-use crate::{
+-    invoice::{check_invoice_exists, check_invoice_is_editable, check_invoice_type, check_store},
+-    invoice_line::{
+-        check_batch, check_location_exists, check_pack_size,
+-        validate::{
+-            check_item_exists, check_line_belongs_to_invoice, check_line_exists_option,
+-            check_number_of_packs,
+-        },
+-    },
+-};
+-use repository::{InvoiceLine, InvoiceRow, InvoiceType, ItemRow, StorageConnection};
+-
+-use super::{UpdateInboundShipmentLine, UpdateInboundShipmentLineError};
+-
+-pub fn validate(
+-    input: &UpdateInboundShipmentLine,
+-    store_id: &str,
+-    connection: &StorageConnection,
+-) -> Result<(InvoiceLine, Option<ItemRow>, InvoiceRow), UpdateInboundShipmentLineError> {
+-    use UpdateInboundShipmentLineError::*;
+-
+-    let line = check_line_exists_option(connection, &input.id)?.ok_or(LineDoesNotExist)?;
+-    let line_row = &line.invoice_line_row;
+-
+-    if !check_pack_size(input.pack_size) {
+-        return Err(PackSizeBelowOne);
+-    }
+-    if !check_number_of_packs(input.number_of_packs) {
+-        return Err(NumberOfPacksBelowZero);
+-    }
+-
+-    let item = check_item_option(&input.item_id, connection)?;
+-
+-    let invoice =
+-        check_invoice_exists(&line_row.invoice_id, connection)?.ok_or(InvoiceDoesNotExist)?;
+-    if !check_invoice_type(&invoice, InvoiceType::InboundShipment) {
+-        return Err(NotAnInboundShipment);
+-    }
+-    if !check_invoice_is_editable(&invoice) {
+-        return Err(CannotEditFinalised);
+-    }
+-    if !check_store(&invoice, store_id) {
+-        return Err(NotThisStoreInvoice);
+-    }
+-
+-    if !check_batch(line_row, connection)? {
+-        return Err(BatchIsReserved);
+-    }
+-    if let Some(location) = &input.location {
+-        if !check_location_exists(&location.value, connection)? {
+-            return Err(LocationDoesNotExist);
+-        }
+-    }
+-
+-    if !check_line_belongs_to_invoice(line_row, &invoice) {
+-        return Err(NotThisInvoiceLine(line.invoice_line_row.invoice_id));
+-    }
+-
+-    // TODO: StockLineDoesNotBelongToCurrentStore
+-    // TODO: LocationDoesNotBelongToCurrentStore
+-
+-    Ok((line, item, invoice))
+-}
+-
+-fn check_item_option(
+-    item_id_option: &Option<String>,
+-    connection: &StorageConnection,
+-) -> Result<Option<ItemRow>, UpdateInboundShipmentLineError> {
+-    if let Some(item_id) = item_id_option {
+-        Ok(Some(
+-            check_item_exists(connection, item_id)?
+-                .ok_or(UpdateInboundShipmentLineError::ItemNotFound)?,
+-        ))
+-    } else {
+-        Ok(None)
+-    }
+-}
+diff --git a/server/service/src/invoice_line/inbound_shipment_service_line/delete/mod.rs b/server/service/src/invoice_line/inbound_shipment_service_line/delete/mod.rs
+index de6bce7bb..9d9af3727 100644
+--- a/server/service/src/invoice_line/inbound_shipment_service_line/delete/mod.rs
++++ b/server/service/src/invoice_line/inbound_shipment_service_line/delete/mod.rs
+@@ -1,5 +1,5 @@
+ use crate::{
+-    invoice_line::DeleteInboundShipmentLine, service_provider::ServiceContext, WithDBError,
++    invoice_line::stock_in_line::DeleteStockInLine, service_provider::ServiceContext, WithDBError,
+ };
+ use repository::{InvoiceLineRowRepository, RepositoryError};
+ 
+@@ -11,7 +11,7 @@ type OutError = DeleteInboundShipmentServiceLineError;
+ 
+ pub fn delete_inbound_shipment_service_line(
+     ctx: &ServiceContext,
+-    input: DeleteInboundShipmentLine,
++    input: DeleteStockInLine,
+ ) -> Result<String, OutError> {
+     let line_id = ctx
+         .connection
+@@ -68,8 +68,7 @@ mod test {
+     use util::inline_init;
+ 
+     use crate::{
+-        invoice_line::inbound_shipment_line::DeleteInboundShipmentLine,
+-        service_provider::ServiceProvider,
++        invoice_line::stock_in_line::DeleteStockInLine, service_provider::ServiceProvider,
+     };
+ 
+     use super::DeleteInboundShipmentServiceLineError;
+@@ -94,7 +93,7 @@ mod test {
+         assert_eq!(
+             service.delete_inbound_shipment_service_line(
+                 &context,
+-                inline_init(|r: &mut DeleteInboundShipmentLine| {
++                inline_init(|r: &mut DeleteStockInLine| {
+                     r.id = "invalid".to_string();
+                 }),
+             ),
+@@ -105,7 +104,7 @@ mod test {
+         assert_eq!(
+             service.delete_inbound_shipment_service_line(
+                 &context,
+-                inline_init(|r: &mut DeleteInboundShipmentLine| {
++                inline_init(|r: &mut DeleteStockInLine| {
+                     r.id = mock_draft_outbound_service_line().id;
+                 }),
+             ),
+@@ -116,7 +115,7 @@ mod test {
+         assert_eq!(
+             service.delete_inbound_shipment_service_line(
+                 &context,
+-                inline_init(|r: &mut DeleteInboundShipmentLine| {
++                inline_init(|r: &mut DeleteStockInLine| {
+                     r.id = mock_draft_inbound_verified_service_line().id;
+                 }),
+             ),
+@@ -128,7 +127,7 @@ mod test {
+         assert_eq!(
+             service.delete_inbound_shipment_service_line(
+                 &context,
+-                inline_init(|r: &mut DeleteInboundShipmentLine| {
++                inline_init(|r: &mut DeleteStockInLine| {
+                     r.id = mock_draft_inbound_service_line().id;
+                 }),
+             ),
+@@ -153,7 +152,7 @@ mod test {
+         service
+             .delete_inbound_shipment_service_line(
+                 &context,
+-                inline_init(|r: &mut DeleteInboundShipmentLine| {
++                inline_init(|r: &mut DeleteStockInLine| {
+                     r.id = mock_draft_inbound_service_line().id;
+                 }),
+             )
+diff --git a/server/service/src/invoice_line/inbound_shipment_service_line/delete/validate.rs b/server/service/src/invoice_line/inbound_shipment_service_line/delete/validate.rs
+index 75bce3411..1f994d3d4 100644
+--- a/server/service/src/invoice_line/inbound_shipment_service_line/delete/validate.rs
++++ b/server/service/src/invoice_line/inbound_shipment_service_line/delete/validate.rs
+@@ -1,8 +1,8 @@
+ use crate::{
+     invoice::{check_invoice_exists, check_invoice_is_editable, check_invoice_type, check_store},
+     invoice_line::{
++        stock_in_line::DeleteStockInLine,
+         validate::{check_line_belongs_to_invoice, check_line_row_exists_option},
+-        DeleteInboundShipmentLine,
+     },
+ };
+ use repository::{InvoiceLineRow, InvoiceType, StorageConnection};
+@@ -10,7 +10,7 @@ use repository::{InvoiceLineRow, InvoiceType, StorageConnection};
+ use super::DeleteInboundShipmentServiceLineError;
+ 
+ pub fn validate(
+-    input: &DeleteInboundShipmentLine,
++    input: &DeleteStockInLine,
+     store_id: &str,
+     connection: &StorageConnection,
+ ) -> Result<InvoiceLineRow, DeleteInboundShipmentServiceLineError> {
+diff --git a/server/service/src/invoice_line/mod.rs b/server/service/src/invoice_line/mod.rs
+index ccd96df9b..16ec42732 100644
+--- a/server/service/src/invoice_line/mod.rs
++++ b/server/service/src/invoice_line/mod.rs
+@@ -12,9 +12,6 @@ use crate::ListResult;
+ pub mod query;
+ use self::query::*;
+ 
+-pub mod inbound_shipment_line;
+-use self::inbound_shipment_line::*;
+-
+ pub mod inbound_shipment_service_line;
+ use self::inbound_shipment_service_line::*;
+ 
+@@ -28,6 +25,7 @@ pub mod stock_out_line;
+ use self::stock_out_line::*;
+ 
+ pub mod stock_in_line;
++use self::stock_in_line::*;
+ 
+ pub mod update_return_reason_id;
+ use self::update_return_reason_id::*;
+@@ -53,7 +51,7 @@ pub trait InvoiceLineServiceTrait: Sync + Send {
+         get_invoice_lines(ctx, store_id, invoice_id, pagination, filter, sort)
+     }
+ 
+-    // Stock out: Outbound/Prescription
++    // Stock out: Outbound Shipment/Outbound Return/Prescription
+     fn insert_stock_out_line(
+         &self,
+         ctx: &ServiceContext,
+@@ -78,31 +76,32 @@ pub trait InvoiceLineServiceTrait: Sync + Send {
+         delete_stock_out_line(ctx, input)
+     }
+ 
+-    // Inbound
+-    fn insert_inbound_shipment_line(
++    // Stock in: Inbound Shipment/Inbound Return
++    fn insert_stock_in_line(
+         &self,
+         ctx: &ServiceContext,
+-        input: InsertInboundShipmentLine,
+-    ) -> Result<InvoiceLine, InsertInboundShipmentLineError> {
+-        insert_inbound_shipment_line(ctx, input)
++        input: InsertStockInLine,
++    ) -> Result<InvoiceLine, InsertStockInLineError> {
++        insert_stock_in_line(ctx, input)
+     }
+ 
+-    fn update_inbound_shipment_line(
++    fn update_stock_in_line(
+         &self,
+         ctx: &ServiceContext,
+-        input: UpdateInboundShipmentLine,
+-    ) -> Result<InvoiceLine, UpdateInboundShipmentLineError> {
+-        update_inbound_shipment_line(ctx, input)
++        input: UpdateStockInLine,
++    ) -> Result<InvoiceLine, UpdateStockInLineError> {
++        update_stock_in_line(ctx, input)
+     }
+ 
+-    fn delete_inbound_shipment_line(
++    fn delete_stock_in_line(
+         &self,
+         ctx: &ServiceContext,
+-        input: DeleteInboundShipmentLine,
+-    ) -> Result<String, DeleteInboundShipmentLineError> {
+-        delete_inbound_shipment_line(ctx, input)
++        input: DeleteStockInLine,
++    ) -> Result<String, DeleteStockInLineError> {
++        delete_stock_in_line(ctx, input)
+     }
+ 
++    // Inbound
+     fn insert_inbound_shipment_service_line(
+         &self,
+         ctx: &ServiceContext,
+@@ -122,7 +121,7 @@ pub trait InvoiceLineServiceTrait: Sync + Send {
+     fn delete_inbound_shipment_service_line(
+         &self,
+         ctx: &ServiceContext,
+-        input: DeleteInboundShipmentLine,
++        input: DeleteStockInLine,
+     ) -> Result<String, DeleteInboundShipmentServiceLineError> {
+         delete_inbound_shipment_service_line(ctx, input)
+     }
+diff --git a/server/service/src/invoice_line/outbound_shipment_unallocated_line/allocate/generate.rs b/server/service/src/invoice_line/outbound_shipment_unallocated_line/allocate/generate.rs
+index f98d608f2..b8f0dcf48 100644
+--- a/server/service/src/invoice_line/outbound_shipment_unallocated_line/allocate/generate.rs
++++ b/server/service/src/invoice_line/outbound_shipment_unallocated_line/allocate/generate.rs
+@@ -151,13 +151,20 @@ fn generate_new_line(
+     let stock_line_row = &stock_line.stock_line_row;
+     InsertStockOutLine {
+         id: uuid::uuid(),
+-        r#type: Some(StockOutType::OutboundShipment),
++        r#type: StockOutType::OutboundShipment,
+         invoice_id: invoice_id.to_string(),
+         stock_line_id: stock_line_row.id.clone(),
+         number_of_packs: packs_to_allocate,
++        // Default
+         total_before_tax: None,
+         tax_percentage: None,
+         note: None,
++        location_id: None,
++        batch: None,
++        pack_size: None,
++        expiry_date: None,
++        cost_price_per_pack: None,
++        sell_price_per_pack: None,
+     }
+ }
+ 
+diff --git a/server/service/src/invoice_line/stock_in_line/delete/validate.rs b/server/service/src/invoice_line/stock_in_line/delete/validate.rs
+index 257795a80..8b5b5fcdf 100644
+--- a/server/service/src/invoice_line/stock_in_line/delete/validate.rs
++++ b/server/service/src/invoice_line/stock_in_line/delete/validate.rs
+@@ -1,7 +1,7 @@
+ use crate::{
+     invoice::{check_invoice_exists, check_invoice_is_editable, check_invoice_type, check_store},
+     invoice_line::{
+-        check_batch,
++        stock_in_line::check_batch,
+         validate::{
+             check_line_belongs_to_invoice, check_line_not_associated_with_stocktake,
+             check_line_row_exists_option,
+diff --git a/server/service/src/invoice_line/stock_in_line/generate.rs b/server/service/src/invoice_line/stock_in_line/generate.rs
+new file mode 100644
+index 000000000..dd58b8579
+--- /dev/null
++++ b/server/service/src/invoice_line/stock_in_line/generate.rs
+@@ -0,0 +1,130 @@
++use repository::{
++    InvoiceLineRow, RepositoryError, StockLineRow, StockLineRowRepository, StorageConnection,
++};
++use util::uuid::uuid;
++
++pub fn convert_stock_line_to_single_pack(stock_line: StockLineRow) -> StockLineRow {
++    StockLineRow {
++        total_number_of_packs: stock_line.total_number_of_packs * stock_line.pack_size as f64,
++        available_number_of_packs: stock_line.available_number_of_packs
++            * stock_line.pack_size as f64,
++        cost_price_per_pack: stock_line.cost_price_per_pack / stock_line.pack_size as f64,
++        sell_price_per_pack: stock_line.sell_price_per_pack / stock_line.pack_size as f64,
++        pack_size: 1,
++        ..stock_line
++    }
++}
++
++pub fn convert_invoice_line_to_single_pack(invoice_line: InvoiceLineRow) -> InvoiceLineRow {
++    InvoiceLineRow {
++        number_of_packs: invoice_line.number_of_packs * invoice_line.pack_size as f64,
++        sell_price_per_pack: invoice_line.sell_price_per_pack / invoice_line.pack_size as f64,
++        cost_price_per_pack: invoice_line.cost_price_per_pack / invoice_line.pack_size as f64,
++        pack_size: 1,
++        ..invoice_line
++    }
++}
++pub struct StockLineInput {
++    pub stock_line_id: Option<String>,
++    pub store_id: String,
++    pub on_hold: bool,
++    pub barcode_id: Option<String>,
++    pub supplier_link_id: String,
++    pub overwrite_stock_levels: bool,
++}
++
++struct StockLevels {
++    available_number_of_packs: f64,
++    total_number_of_packs: f64,
++}
++
++pub fn generate_batch(
++    connection: &StorageConnection,
++    InvoiceLineRow {
++        item_link_id,
++        pack_size,
++        batch,
++        expiry_date,
++        sell_price_per_pack,
++        cost_price_per_pack,
++        number_of_packs,
++        location_id,
++        note,
++        ..
++    }: InvoiceLineRow,
++    StockLineInput {
++        stock_line_id,
++        store_id,
++        on_hold,
++        barcode_id,
++        supplier_link_id,
++        overwrite_stock_levels,
++    }: StockLineInput,
++) -> Result<StockLineRow, RepositoryError> {
++    // Generate new stock line id if not provided
++    let stock_line_id = match stock_line_id {
++        Some(stock_line_id) => stock_line_id,
++        None => uuid(),
++    };
++
++    let existing_stock_line =
++        StockLineRowRepository::new(connection).find_one_by_id_option(&stock_line_id)?;
++
++    // Update existing stock level values if stock line already exists
++    let StockLevels {
++        available_number_of_packs,
++        total_number_of_packs,
++    } = get_updated_stock_levels(
++        &existing_stock_line,
++        number_of_packs,
++        overwrite_stock_levels,
++    );
++
++    let (barcode_id, supplier_link_id) = match existing_stock_line {
++        Some(stock_line) => (
++            // if no new barcode, use the existing one if exists
++            barcode_id.or(stock_line.barcode_id),
++            // if stock_line already has supplier, use that
++            stock_line.supplier_link_id.or(Some(supplier_link_id)),
++        ),
++        None => (barcode_id, Some(supplier_link_id)),
++    };
++
++    let stock_line_row = StockLineRow {
++        id: stock_line_id,
++        item_link_id,
++        store_id,
++        location_id,
++        batch,
++        pack_size,
++        cost_price_per_pack,
++        sell_price_per_pack,
++        available_number_of_packs,
++        total_number_of_packs,
++        expiry_date,
++        note,
++        supplier_link_id,
++        on_hold,
++        barcode_id,
++    };
++
++    Ok(stock_line_row)
++}
++
++fn get_updated_stock_levels(
++    existing_stock_line: &Option<StockLineRow>,
++    introduced_number_of_packs: f64,
++    overwrite_stock_levels: bool,
++) -> StockLevels {
++    match (existing_stock_line, overwrite_stock_levels) {
++        (Some(stock_line), false) => StockLevels {
++            available_number_of_packs: stock_line.available_number_of_packs
++                + introduced_number_of_packs,
++            total_number_of_packs: stock_line.total_number_of_packs + introduced_number_of_packs,
++        },
++        _ => StockLevels {
++            available_number_of_packs: introduced_number_of_packs,
++            total_number_of_packs: introduced_number_of_packs,
++        },
++    }
++}
+diff --git a/server/service/src/invoice_line/stock_in_line/insert/generate.rs b/server/service/src/invoice_line/stock_in_line/insert/generate.rs
+index 28cfdea43..41139bb03 100644
+--- a/server/service/src/invoice_line/stock_in_line/insert/generate.rs
++++ b/server/service/src/invoice_line/stock_in_line/insert/generate.rs
+@@ -1,9 +1,9 @@
+ use crate::{
+     barcode::{self, BarcodeInput},
+     invoice::common::{calculate_total_after_tax, generate_invoice_user_id_update},
+-    invoice_line::{
+-        convert_invoice_line_to_single_pack, convert_stock_line_to_single_pack,
+-        stock_in_line::{generate_batch, StockInType, StockLineInput},
++    invoice_line::stock_in_line::{
++        convert_invoice_line_to_single_pack, convert_stock_line_to_single_pack, generate_batch,
++        StockInType, StockLineInput,
+     },
+     store_preference::get_store_preferences,
+     u32_to_i32,
+@@ -40,24 +40,29 @@ pub fn generate(
+ 
+     let barcode_option = generate_barcode(&input, connection)?;
+ 
+-    let new_batch_option = if should_upsert_batch(&input.r#type, &existing_invoice_row) {
+-        let new_batch = generate_batch(
+-            // If a stock line id is included in the input, use it
+-            input.stock_line_id.is_some(),
++    let batch_option = if should_upsert_batch(&input.r#type, &existing_invoice_row) {
++        let batch = generate_batch(
++            connection,
+             new_line.clone(),
+             StockLineInput {
++                stock_line_id: input.stock_line_id,
+                 store_id: existing_invoice_row.store_id.clone(),
+                 supplier_link_id: existing_invoice_row.name_link_id.clone(),
+                 on_hold: input.stock_on_hold,
+                 barcode_id: barcode_option.clone().map(|b| b.id.clone()),
++                overwrite_stock_levels: match &input.r#type {
++                    // adjusting existing stock, we want to add to existing stock levels
++                    StockInType::InventoryAddition => false,
++                    _ => true,
++                },
+             },
+-        );
++        )?;
+         // If a new stock line has been created, update the stock_line_id on the invoice line
+-        new_line.stock_line_id = Some(new_batch.id.clone());
++        new_line.stock_line_id = Some(batch.id.clone());
+ 
+         let new_batch = match store_preferences.pack_to_one {
+-            true => convert_stock_line_to_single_pack(new_batch),
+-            false => new_batch,
++            true => convert_stock_line_to_single_pack(batch),
++            false => batch,
+         };
+ 
+         Some(new_batch)
+@@ -68,7 +73,7 @@ pub fn generate(
+     Ok(GenerateResult {
+         invoice: generate_invoice_user_id_update(user_id, existing_invoice_row),
+         invoice_line: new_line,
+-        stock_line: new_batch_option,
++        stock_line: batch_option,
+         barcode: barcode_option,
+     })
+ }
+@@ -129,7 +134,9 @@ fn generate_line(
+ 
+ fn should_upsert_batch(stock_in_type: &StockInType, existing_invoice_row: &InvoiceRow) -> bool {
+     match stock_in_type {
+-        StockInType::InboundReturn => existing_invoice_row.status != InvoiceStatus::New,
++        StockInType::InboundShipment | StockInType::InboundReturn => {
++            existing_invoice_row.status != InvoiceStatus::New
++        }
+         StockInType::InventoryAddition => true,
+     }
+ }
+diff --git a/server/service/src/invoice_line/stock_in_line/insert/mod.rs b/server/service/src/invoice_line/stock_in_line/insert/mod.rs
+index fb346285a..c2c9ece0a 100644
+--- a/server/service/src/invoice_line/stock_in_line/insert/mod.rs
++++ b/server/service/src/invoice_line/stock_in_line/insert/mod.rs
+@@ -34,6 +34,7 @@ pub struct InsertStockInLine {
+     pub total_before_tax: Option<f64>,
+     pub tax_percentage: Option<f64>,
+     pub r#type: StockInType,
++    /// If None, new stock line will be generated
+     pub stock_line_id: Option<String>,
+     pub barcode: Option<String>,
+     pub stock_on_hold: bool,
+diff --git a/server/service/src/invoice_line/stock_in_line/insert/validate.rs b/server/service/src/invoice_line/stock_in_line/insert/validate.rs
+index 04540a9d8..b660c3505 100644
+--- a/server/service/src/invoice_line/stock_in_line/insert/validate.rs
++++ b/server/service/src/invoice_line/stock_in_line/insert/validate.rs
+@@ -1,7 +1,7 @@
+ use crate::{
+     invoice::{check_invoice_exists, check_invoice_is_editable, check_invoice_type, check_store},
+     invoice_line::{
+-        check_location_exists, check_pack_size,
++        stock_in_line::{check_location_exists, check_pack_size},
+         validate::{check_item_exists, check_line_does_not_exist},
+     },
+ };
+diff --git a/server/service/src/invoice_line/stock_in_line/mod.rs b/server/service/src/invoice_line/stock_in_line/mod.rs
+index ef2677fb2..4ec970bf5 100644
+--- a/server/service/src/invoice_line/stock_in_line/mod.rs
++++ b/server/service/src/invoice_line/stock_in_line/mod.rs
+@@ -1,5 +1,7 @@
+-use repository::{InvoiceLineRow, InvoiceType, StockLineRow};
+-use util::uuid::uuid;
++use repository::InvoiceType;
++
++pub mod generate;
++pub mod validate;
+ 
+ pub mod delete;
+ pub mod insert;
+@@ -8,11 +10,15 @@ pub use self::delete::*;
+ pub use self::insert::*;
+ pub use self::update::*;
+ 
++pub use self::generate::*;
++pub use self::validate::*;
++
+ #[derive(Clone, Debug, Default, PartialEq)]
+ pub enum StockInType {
+     #[default]
+     InboundReturn,
+     InventoryAddition,
++    InboundShipment,
+ }
+ 
+ impl StockInType {
+@@ -20,60 +26,7 @@ impl StockInType {
+         match self {
+             StockInType::InboundReturn => InvoiceType::InboundReturn,
+             StockInType::InventoryAddition => InvoiceType::InventoryAddition,
++            StockInType::InboundShipment => InvoiceType::InboundShipment,
+         }
+     }
+ }
+-
+-pub struct StockLineInput {
+-    pub store_id: String,
+-    pub on_hold: bool,
+-    pub barcode_id: Option<String>,
+-    pub supplier_link_id: String,
+-}
+-
+-pub fn generate_batch(
+-    keep_existing_batch: bool,
+-    InvoiceLineRow {
+-        stock_line_id,
+-        item_link_id,
+-        pack_size,
+-        batch,
+-        expiry_date,
+-        sell_price_per_pack,
+-        cost_price_per_pack,
+-        number_of_packs,
+-        location_id,
+-        note,
+-        ..
+-    }: InvoiceLineRow,
+-    StockLineInput {
+-        store_id,
+-        on_hold,
+-        barcode_id,
+-        supplier_link_id,
+-    }: StockLineInput,
+-) -> StockLineRow {
+-    // Generate new id if requested via parameter or if stock_line_id is not already set on line
+-    let stock_line_id = match (stock_line_id, keep_existing_batch) {
+-        (Some(stock_line_id), true) => stock_line_id,
+-        _ => uuid(),
+-    };
+-
+-    StockLineRow {
+-        id: stock_line_id,
+-        item_link_id,
+-        store_id,
+-        location_id,
+-        batch,
+-        pack_size,
+-        cost_price_per_pack,
+-        sell_price_per_pack,
+-        available_number_of_packs: number_of_packs,
+-        total_number_of_packs: number_of_packs,
+-        expiry_date,
+-        note,
+-        supplier_link_id: Some(supplier_link_id),
+-        on_hold,
+-        barcode_id,
+-    }
+-}
+diff --git a/server/service/src/invoice_line/stock_in_line/update/generate.rs b/server/service/src/invoice_line/stock_in_line/update/generate.rs
+index 1ae302ed4..c45df6ea1 100644
+--- a/server/service/src/invoice_line/stock_in_line/update/generate.rs
++++ b/server/service/src/invoice_line/stock_in_line/update/generate.rs
+@@ -3,9 +3,8 @@ use crate::{
+         calculate_foreign_currency_total, calculate_total_after_tax,
+         generate_invoice_user_id_update,
+     },
+-    invoice_line::{
+-        inbound_shipment_line::generate::convert_invoice_line_to_single_pack,
+-        stock_in_line::{generate_batch, StockLineInput},
++    invoice_line::stock_in_line::{
++        convert_invoice_line_to_single_pack, generate_batch, StockLineInput,
+     },
+     store_preference::get_store_preferences,
+     u32_to_i32,
+@@ -52,18 +51,25 @@ pub fn generate(
+     };
+ 
+     let upsert_batch_option = if existing_invoice_row.status != InvoiceStatus::New {
++        // There will be a batch_to_delete_id if the item has changed
++        // If item has changed, we want a new stock line, otherwise keep existing
++        let stock_line_id = match batch_to_delete_id {
++            Some(_) => None, // will generate new stock line
++            None => update_line.stock_line_id.clone(),
++        };
++
+         let new_batch = generate_batch(
+-            // There will be a batch_to_delete_id if the item has changed
+-            // If item has changed, we want a new stock line, otherwise keep existing
+-            batch_to_delete_id.is_none(),
++            connection,
+             update_line.clone(),
+             StockLineInput {
++                stock_line_id,
+                 store_id: existing_invoice_row.store_id.clone(),
+                 supplier_link_id: existing_invoice_row.name_link_id.clone(),
+                 on_hold: false,
+                 barcode_id: None,
++                overwrite_stock_levels: true,
+             },
+-        );
++        )?;
+         update_line.stock_line_id = Some(new_batch.id.clone());
+         Some(new_batch)
+     } else {
+diff --git a/server/service/src/invoice_line/stock_in_line/update/validate.rs b/server/service/src/invoice_line/stock_in_line/update/validate.rs
+index e6780c283..9d663cf09 100644
+--- a/server/service/src/invoice_line/stock_in_line/update/validate.rs
++++ b/server/service/src/invoice_line/stock_in_line/update/validate.rs
+@@ -1,7 +1,7 @@
+ use crate::{
+     invoice::{check_invoice_exists, check_invoice_is_editable, check_invoice_type, check_store},
+     invoice_line::{
+-        check_batch, check_location_exists, check_pack_size,
++        stock_in_line::{check_batch, check_location_exists, check_pack_size},
+         validate::{check_item_exists, check_line_belongs_to_invoice, check_line_exists_option},
+     },
+ };
+diff --git a/server/service/src/invoice_line/inbound_shipment_line/validate.rs b/server/service/src/invoice_line/stock_in_line/validate.rs
+similarity index 100%
+rename from server/service/src/invoice_line/inbound_shipment_line/validate.rs
+rename to server/service/src/invoice_line/stock_in_line/validate.rs
+diff --git a/server/service/src/invoice_line/stock_out_line/insert/generate.rs b/server/service/src/invoice_line/stock_out_line/insert/generate.rs
+index b5efb6150..9e430ac62 100644
+--- a/server/service/src/invoice_line/stock_out_line/insert/generate.rs
++++ b/server/service/src/invoice_line/stock_out_line/insert/generate.rs
+@@ -3,7 +3,10 @@ use repository::{
+     StockLine, StockLineRow, StorageConnection,
+ };
+ 
+-use crate::invoice::common::{calculate_foreign_currency_total, calculate_total_after_tax};
++use crate::{
++    invoice::common::{calculate_foreign_currency_total, calculate_total_after_tax},
++    invoice_line::StockOutType,
++};
+ 
+ use super::{InsertStockOutLine, InsertStockOutLineError};
+ 
+@@ -14,33 +17,59 @@ pub fn generate(
+     batch: StockLine,
+     invoice: InvoiceRow,
+ ) -> Result<(InvoiceLineRow, StockLineRow), InsertStockOutLineError> {
+-    let adjust_total_number_of_packs = invoice.status == InvoiceStatus::Picked;
++    let adjust_total_number_of_packs =
++        should_adjust_total_number_of_packs(invoice.status.clone(), &input.r#type);
+ 
+     let update_batch = generate_batch_update(
+-        &input,
++        input.clone(),
+         batch.stock_line_row.clone(),
+         adjust_total_number_of_packs,
+     );
+-    let new_line = generate_line(connection, input, item_row, batch, invoice)?;
++    let new_line = generate_line(connection, input, item_row, update_batch.clone(), invoice)?;
+ 
+     Ok((new_line, update_batch))
+ }
+ 
+ fn generate_batch_update(
+-    input: &InsertStockOutLine,
++    InsertStockOutLine {
++        location_id,
++        batch: input_batch_name,
++        pack_size,
++        expiry_date,
++        cost_price_per_pack,
++        sell_price_per_pack,
++        number_of_packs,
++        note: _,
++        id: _,
++        r#type: _,
++        invoice_id: _,
++        stock_line_id: _,
++        total_before_tax: _,
++        tax_percentage: _,
++    }: InsertStockOutLine,
+     batch: StockLineRow,
+     adjust_total_number_of_packs: bool,
+ ) -> StockLineRow {
+-    let mut update_batch = batch;
+-
+-    let reduction = input.number_of_packs;
++    let available_reduction = number_of_packs;
++    let total_reduction = if adjust_total_number_of_packs {
++        number_of_packs
++    } else {
++        0.0
++    };
+ 
+-    update_batch.available_number_of_packs -= reduction;
+-    if adjust_total_number_of_packs {
+-        update_batch.total_number_of_packs -= reduction;
+-    }
++    let updated_batch = StockLineRow {
++        available_number_of_packs: batch.available_number_of_packs - available_reduction,
++        total_number_of_packs: batch.total_number_of_packs - total_reduction,
++        location_id: location_id.or(batch.location_id),
++        batch: input_batch_name.or(batch.batch),
++        expiry_date: expiry_date.or(batch.expiry_date),
++        pack_size: pack_size.unwrap_or(batch.pack_size),
++        cost_price_per_pack: cost_price_per_pack.unwrap_or(batch.cost_price_per_pack),
++        sell_price_per_pack: sell_price_per_pack.unwrap_or(batch.sell_price_per_pack),
++        ..batch
++    };
+ 
+-    update_batch
++    updated_batch
+ }
+ 
+ fn generate_line(
+@@ -52,8 +81,14 @@ fn generate_line(
+         stock_line_id,
+         number_of_packs,
+         total_before_tax,
+-        tax_percentage: _,
+         note,
++        tax_percentage: _,
++        location_id: _,
++        batch: _,
++        pack_size: _,
++        expiry_date: _,
++        cost_price_per_pack: _,
++        sell_price_per_pack: _,
+     }: InsertStockOutLine,
+     ItemRow {
+         id: item_id,
+@@ -61,20 +96,16 @@ fn generate_line(
+         code: item_code,
+         ..
+     }: ItemRow,
+-    StockLine {
+-        stock_line_row:
+-            StockLineRow {
+-                sell_price_per_pack,
+-                cost_price_per_pack,
+-                pack_size,
+-                batch,
+-                expiry_date,
+-                location_id,
+-                note: _,
+-                ..
+-            },
++    StockLineRow {
++        sell_price_per_pack,
++        cost_price_per_pack,
++        pack_size,
++        batch,
++        expiry_date,
++        location_id,
++        note: _,
+         ..
+-    }: StockLine,
++    }: StockLineRow,
+     InvoiceRow {
+         tax_percentage,
+         currency_id,
+@@ -115,3 +146,10 @@ fn generate_line(
+         foreign_currency_price_before_tax,
+     })
+ }
++
++fn should_adjust_total_number_of_packs(status: InvoiceStatus, r#type: &StockOutType) -> bool {
++    match r#type {
++        StockOutType::InventoryReduction => true,
++        _ => status == InvoiceStatus::Picked,
++    }
++}
+diff --git a/server/service/src/invoice_line/stock_out_line/insert/mod.rs b/server/service/src/invoice_line/stock_out_line/insert/mod.rs
+index 5c1d79737..cf29f2330 100644
+--- a/server/service/src/invoice_line/stock_out_line/insert/mod.rs
++++ b/server/service/src/invoice_line/stock_out_line/insert/mod.rs
+@@ -1,4 +1,5 @@
+ use crate::{invoice_line::query::get_invoice_line, service_provider::ServiceContext, WithDBError};
++use chrono::NaiveDate;
+ use repository::{InvoiceLine, InvoiceLineRowRepository, RepositoryError, StockLineRowRepository};
+ 
+ mod generate;
+@@ -11,13 +12,19 @@ use super::StockOutType;
+ #[derive(Clone, Debug, PartialEq, Default)]
+ pub struct InsertStockOutLine {
+     pub id: String,
+-    pub r#type: Option<StockOutType>,
++    pub r#type: StockOutType,
+     pub invoice_id: String,
+     pub stock_line_id: String,
+     pub number_of_packs: f64,
+     pub total_before_tax: Option<f64>,
+     pub tax_percentage: Option<f64>,
+     pub note: Option<String>,
++    pub location_id: Option<String>,
++    pub batch: Option<String>,
++    pub pack_size: Option<i32>,
++    pub expiry_date: Option<NaiveDate>,
++    pub cost_price_per_pack: Option<f64>,
++    pub sell_price_per_pack: Option<f64>,
+ }
+ 
+ #[derive(Clone, Debug, PartialEq)]
+@@ -25,7 +32,6 @@ pub enum InsertStockOutLineError {
+     LineAlreadyExists,
+     DatabaseError(RepositoryError),
+     InvoiceDoesNotExist,
+-    NoInvoiceType,
+     InvoiceTypeDoesNotMatch,
+     NotThisStoreInvoice,
+     CannotEditFinalised,
+@@ -120,7 +126,7 @@ mod test {
+                 &context,
+                 inline_init(|r: &mut InsertStockOutLine| {
+                     r.id = mock_outbound_shipment_a_invoice_lines()[0].id.clone();
+-                    r.r#type = Some(StockOutType::OutboundShipment);
++                    r.r#type = StockOutType::OutboundShipment;
+                     r.invoice_id = mock_outbound_shipment_a_invoice_lines()[0]
+                         .invoice_id
+                         .clone();
+@@ -135,7 +141,7 @@ mod test {
+                 &context,
+                 inline_init(|r: &mut InsertStockOutLine| {
+                     r.id = "new outbound shipment line id".to_string();
+-                    r.r#type = Some(StockOutType::OutboundShipment);
++                    r.r#type = StockOutType::OutboundShipment;
+                     r.invoice_id = "new invoice id".to_string();
+                     r.number_of_packs = 1.0;
+                     r.stock_line_id = mock_item_b_lines()[0].id.clone();
+@@ -150,7 +156,7 @@ mod test {
+                 &context,
+                 inline_init(|r: &mut InsertStockOutLine| {
+                     r.id = "new outbound line id".to_string();
+-                    r.r#type = Some(StockOutType::OutboundShipment);
++                    r.r#type = StockOutType::OutboundShipment;
+                     r.invoice_id = "invalid".to_string();
+                     r.number_of_packs = 1.0;
+                 }),
+@@ -165,7 +171,7 @@ mod test {
+                 &context,
+                 inline_init(|r: &mut InsertStockOutLine| {
+                     r.id = "new outbound line id".to_string();
+-                    r.r#type = Some(StockOutType::OutboundShipment);
++                    r.r#type = StockOutType::OutboundShipment;
+                     r.stock_line_id = "item_b_line_a".to_string();
+                     r.invoice_id = mock_outbound_shipment_a_invoice_lines()[0]
+                         .invoice_id
+@@ -182,7 +188,7 @@ mod test {
+                 &context,
+                 inline_init(|r: &mut InsertStockOutLine| {
+                     r.id = "new outbound line id".to_string();
+-                    r.r#type = Some(StockOutType::OutboundShipment);
++                    r.r#type = StockOutType::OutboundShipment;
+                     r.invoice_id = mock_outbound_shipment_a_invoice_lines()[0]
+                         .invoice_id
+                         .clone();
+@@ -199,7 +205,7 @@ mod test {
+                 &context,
+                 inline_init(|r: &mut InsertStockOutLine| {
+                     r.id = "new outbound line id".to_string();
+-                    r.r#type = Some(StockOutType::OutboundShipment);
++                    r.r#type = StockOutType::OutboundShipment;
+                     r.invoice_id = mock_outbound_shipment_a_invoice_lines()[0]
+                         .invoice_id
+                         .clone();
+@@ -216,7 +222,7 @@ mod test {
+                 &context,
+                 inline_init(|r: &mut InsertStockOutLine| {
+                     r.id = "new outbound line id".to_string();
+-                    r.r#type = Some(StockOutType::OutboundShipment);
++                    r.r#type = StockOutType::OutboundShipment;
+                     r.invoice_id = mock_outbound_shipment_a_invoice_lines()[0]
+                         .invoice_id
+                         .clone();
+@@ -235,7 +241,7 @@ mod test {
+                 &context,
+                 inline_init(|r: &mut InsertStockOutLine| {
+                     r.id = "new outbound line id".to_string();
+-                    r.r#type = Some(StockOutType::OutboundShipment);
++                    r.r#type = StockOutType::OutboundShipment;
+                     r.invoice_id = mock_outbound_shipment_a_invoice_lines()[0]
+                         .invoice_id
+                         .clone();
+@@ -255,7 +261,7 @@ mod test {
+                 &context,
+                 inline_init(|r: &mut InsertStockOutLine| {
+                     r.id = "new outbound line id".to_string();
+-                    r.r#type = Some(StockOutType::OutboundShipment);
++                    r.r#type = StockOutType::OutboundShipment;
+                     r.invoice_id = mock_outbound_shipment_a_invoice_lines()[0]
+                         .invoice_id
+                         .clone();
+@@ -298,7 +304,7 @@ mod test {
+                 &context,
+                 inline_init(|r: &mut InsertStockOutLine| {
+                     r.id = "new outbound line id".to_string();
+-                    r.r#type = Some(StockOutType::OutboundShipment);
++                    r.r#type = StockOutType::OutboundShipment;
+                     r.invoice_id = mock_outbound_shipment_c_invoice_lines()[0]
+                         .invoice_id
+                         .clone();
+@@ -349,7 +355,7 @@ mod test {
+                 &context,
+                 inline_init(|r: &mut InsertStockOutLine| {
+                     r.id = "new allocated invoice line".to_string();
+-                    r.r#type = Some(StockOutType::OutboundShipment);
++                    r.r#type = StockOutType::OutboundShipment;
+                     r.invoice_id = mock_outbound_shipment_c_invoice_lines()[0]
+                         .invoice_id
+                         .clone();
+@@ -389,7 +395,7 @@ mod test {
+                 &context,
+                 inline_init(|r: &mut InsertStockOutLine| {
+                     r.id = "new picked invoice line".to_string();
+-                    r.r#type = Some(StockOutType::OutboundShipment);
++                    r.r#type = StockOutType::OutboundShipment;
+                     r.invoice_id = mock_outbound_shipment_c_invoice_lines()[0]
+                         .invoice_id
+                         .clone();
+@@ -428,7 +434,7 @@ mod test {
+                 &context,
+                 inline_init(|r: &mut InsertStockOutLine| {
+                     r.id = "new prescription line id".to_string();
+-                    r.r#type = Some(StockOutType::Prescription);
++                    r.r#type = StockOutType::Prescription;
+                     r.invoice_id = mock_prescription_a().id;
+                     r.stock_line_id = mock_stock_line_a().id.clone();
+                     r.number_of_packs = 1.0;
+diff --git a/server/service/src/invoice_line/stock_out_line/insert/validate.rs b/server/service/src/invoice_line/stock_out_line/insert/validate.rs
+index c7227142b..7a2e3faa8 100644
+--- a/server/service/src/invoice_line/stock_out_line/insert/validate.rs
++++ b/server/service/src/invoice_line/stock_out_line/insert/validate.rs
+@@ -49,12 +49,8 @@ pub fn validate(
+         return Err(StockLineAlreadyExistsInInvoice(existing_stock.id));
+     }
+ 
+-    if let Some(r#type) = &input.r#type {
+-        if !check_invoice_type(&invoice, r#type.to_domain()) {
+-            return Err(InvoiceTypeDoesNotMatch);
+-        }
+-    } else {
+-        return Err(NoInvoiceType);
++    if !check_invoice_type(&invoice, input.r#type.to_domain()) {
++        return Err(InvoiceTypeDoesNotMatch);
+     }
+     if !check_invoice_is_editable(&invoice) {
+         return Err(CannotEditFinalised);
+diff --git a/server/service/src/invoice_line/stock_out_line/mod.rs b/server/service/src/invoice_line/stock_out_line/mod.rs
+index d82f6f08a..937a5e1ad 100644
+--- a/server/service/src/invoice_line/stock_out_line/mod.rs
++++ b/server/service/src/invoice_line/stock_out_line/mod.rs
+@@ -12,11 +12,13 @@ pub use self::delete::*;
+ pub mod validate;
+ pub use self::validate::*;
+ 
+-#[derive(Clone, Debug, PartialEq)]
++#[derive(Clone, Debug, Default, PartialEq)]
+ pub enum StockOutType {
++    #[default]
+     OutboundShipment,
+     OutboundReturn,
+     Prescription,
++    InventoryReduction,
+ }
+ 
+ impl StockOutType {
+@@ -25,6 +27,7 @@ impl StockOutType {
+             StockOutType::OutboundShipment => InvoiceType::OutboundShipment,
+             StockOutType::Prescription => InvoiceType::Prescription,
+             StockOutType::OutboundReturn => InvoiceType::OutboundReturn,
++            StockOutType::InventoryReduction => InvoiceType::InventoryReduction,
+         }
+     }
+ }
+diff --git a/server/service/src/stocktake/update.rs b/server/service/src/stocktake/update.rs
+index e71fcf67c..56c7145e5 100644
+--- a/server/service/src/stocktake/update.rs
++++ b/server/service/src/stocktake/update.rs
+@@ -2,9 +2,8 @@ use chrono::{NaiveDate, Utc};
+ use repository::{
+     location_movement::{LocationMovementFilter, LocationMovementRepository},
+     ActivityLogType, CurrencyFilter, CurrencyRepository, DatetimeFilter, EqualFilter,
+-    InvoiceLineRow, InvoiceLineRowRepository, InvoiceLineType, InvoiceRow, InvoiceRowRepository,
+-    InvoiceStatus, InvoiceType, ItemLinkRowRepository, ItemRowRepository, LocationMovementRow,
+-    LocationMovementRowRepository, NameLinkRowRepository, NameRowRepository, NumberRowType,
++    InvoiceLineRowRepository, InvoiceRow, InvoiceRowRepository, InvoiceStatus, InvoiceType,
++    LocationMovementRow, LocationMovementRowRepository, NameRowRepository, NumberRowType,
+     RepositoryError, StockLine, StockLineFilter, StockLineRepository, StockLineRow,
+     StockLineRowRepository, Stocktake, StocktakeLine, StocktakeLineFilter, StocktakeLineRepository,
+     StocktakeLineRow, StocktakeLineRowRepository, StocktakeRow, StocktakeRowRepository,
+@@ -13,8 +12,22 @@ use repository::{
+ use util::{constants::INVENTORY_ADJUSTMENT_NAME_CODE, inline_edit, uuid::uuid};
+ 
+ use crate::{
+-    activity_log::activity_log_entry, number::next_number, service_provider::ServiceContext,
+-    stocktake::query::get_stocktake, validate::check_store_id_matches,
++    activity_log::activity_log_entry,
++    i32_to_u32,
++    invoice::inventory_adjustment::UpdateInventoryAdjustmentReason,
++    invoice_line::{
++        stock_in_line::{
++            insert_stock_in_line, InsertStockInLine, InsertStockInLineError, StockInType,
++        },
++        stock_out_line::{
++            insert_stock_out_line, InsertStockOutLine, InsertStockOutLineError, StockOutType,
++        },
++    },
++    number::next_number,
++    service_provider::ServiceContext,
++    stocktake::query::get_stocktake,
++    validate::check_store_id_matches,
++    NullableUpdate,
+ };
+ 
+ use super::validate::{check_stocktake_exist, check_stocktake_not_finalised};
+@@ -48,6 +61,14 @@ pub enum UpdateStocktakeError {
+     StocktakeDoesNotExist,
+     CannotEditFinalised,
+     StocktakeIsLocked,
++    InsertStockInLineError {
++        line_id: String,
++        error: InsertStockInLineError,
++    },
++    InsertStockOutLineError {
++        line_id: String,
++        error: InsertStockOutLineError,
++    },
+     /// Stocktakes doesn't contain any lines
+     NoLines,
+     /// Holds list of affected stock lines
+@@ -179,13 +200,15 @@ pub fn check_stocktake_is_not_locked(input: &UpdateStocktake, existing: &Stockta
+ struct StocktakeGenerateJob {
+     stocktake: StocktakeRow,
+     // list of stocktake lines to be updated, e.g. to link newly created stock_lines during
+-    // stocktake finialisation.
++    // stocktake finalisation.
+     stocktake_lines: Vec<StocktakeLineRow>,
+ 
+     // new inventory adjustment
+     inventory_addition: Option<InvoiceRow>,
+     inventory_reduction: Option<InvoiceRow>,
+-    inventory_adjustment_lines: Vec<InvoiceLineRow>,
++    inventory_addition_lines: Vec<InsertStockInLine>,
++    inventory_reduction_lines: Vec<InsertStockOutLine>,
++    inventory_adjustment_reason_updates: Vec<UpdateInventoryAdjustmentReason>,
+ 
+     // list of stock_line upserts
+     stock_lines: Vec<StockLineRow>,
+@@ -194,16 +217,32 @@ struct StocktakeGenerateJob {
+     location_movements: Option<Vec<LocationMovementRow>>,
+ }
+ 
++pub enum StockChange {
++    StockIn(InsertStockInLine),
++    StockOut(InsertStockOutLine),
++    StockUpdate(StockLineRow),
++}
++
+ /// Contains entities to be updated when a stock line is update/created
+ struct StockLineJob {
+-    stock_line: StockLineRow,
+-    invoice_line: Option<InvoiceLineRow>,
++    stock_in_out_or_update: Option<StockChange>,
+     stocktake_line: Option<StocktakeLineRow>,
+     location_movement: Option<LocationMovementRow>,
++    update_inventory_adjustment_reason: Option<UpdateInventoryAdjustmentReason>,
++}
++
++fn generate_update_inventory_adjustment_reason(
++    invoice_line_id: String,
++    inventory_adjustment_reason_id: Option<String>,
++) -> Option<UpdateInventoryAdjustmentReason> {
++    inventory_adjustment_reason_id.map(|reason_id| UpdateInventoryAdjustmentReason {
++        reason_id: Some(reason_id),
++        invoice_line_id,
++    })
+ }
+ 
+ /// Returns new stock line and matching invoice line
+-fn generate_stock_line_update(
++fn generate_stock_in_out_or_update(
+     connection: &StorageConnection,
+     store_id: &str,
+     inventory_addition_id: &str,
+@@ -211,235 +250,186 @@ fn generate_stock_line_update(
+     stocktake_line: &StocktakeLine,
+     stock_line: &StockLineRow,
+ ) -> Result<StockLineJob, UpdateStocktakeError> {
+-    let counted_number_of_packs = stocktake_line
+-        .line
++    let row = stocktake_line.line.to_owned();
++
++    let counted_number_of_packs = row
+         .counted_number_of_packs
+         .unwrap_or(stocktake_line.line.snapshot_number_of_packs);
+-    let delta = counted_number_of_packs - stocktake_line.line.snapshot_number_of_packs;
+-
+-    let stock_line_item_id = ItemLinkRowRepository::new(connection)
+-        .find_one_by_id(&stock_line.item_link_id)?
+-        .ok_or(UpdateStocktakeError::InternalError(format!(
+-            "Item link ({}) not found",
+-            stock_line.item_link_id
+-        )))?
+-        .item_id;
+-    let stock_line_supplier_id = if let Some(supplier_link_id) = &stock_line.supplier_link_id {
+-        Some(
+-            NameLinkRowRepository::new(connection)
+-                .find_one_by_id(supplier_link_id)?
+-                .ok_or(UpdateStocktakeError::InternalError(format!(
+-                    "Name link ({}) not found",
+-                    supplier_link_id
+-                )))?
+-                .name_id,
+-        )
+-    } else {
+-        None
+-    };
++    let delta = counted_number_of_packs - row.snapshot_number_of_packs;
++
++    let stock_line_row = stock_line.to_owned();
++
++    let pack_size = row.pack_size.unwrap_or(stock_line_row.pack_size);
++    let expiry_date = row.expiry_date.or(stock_line_row.expiry_date);
++    let cost_price_per_pack = row
++        .cost_price_per_pack
++        .unwrap_or(stock_line_row.cost_price_per_pack);
++    let sell_price_per_pack = row
++        .sell_price_per_pack
++        .unwrap_or(stock_line_row.sell_price_per_pack);
++
++    // If no change in stock quantity, we just update the stock line (no inventory adjustment)
++    if delta == 0.0 {
++        let updated_stock_line = StockLineRow {
++            location_id: row.location_id,
++            batch: row.batch,
++            pack_size,
++            cost_price_per_pack,
++            sell_price_per_pack,
++            expiry_date,
++            ..stock_line_row
++        }
++        .to_owned();
+ 
+-    let updated_line = StockLineRow {
+-        id: stock_line.id.clone(),
+-        item_link_id: stock_line_item_id.clone(),
+-        store_id: stock_line.store_id.clone(),
+-        location_id: stocktake_line.line.location_id.clone(),
+-        batch: stocktake_line.line.batch.clone(),
+-        pack_size: stocktake_line
+-            .line
+-            .pack_size
+-            .unwrap_or(stock_line.pack_size),
+-        cost_price_per_pack: stocktake_line
+-            .line
+-            .cost_price_per_pack
+-            .unwrap_or(stock_line.cost_price_per_pack),
+-        sell_price_per_pack: stocktake_line
+-            .line
+-            .sell_price_per_pack
+-            .unwrap_or(stock_line.sell_price_per_pack),
+-        // TODO might get negative!
+-        available_number_of_packs: stock_line.available_number_of_packs + delta,
+-        total_number_of_packs: stock_line.total_number_of_packs + delta,
+-        expiry_date: stocktake_line.line.expiry_date.or(stock_line.expiry_date),
+-        on_hold: stock_line.on_hold,
+-        note: stock_line.note.clone(),
+-        supplier_link_id: stock_line_supplier_id,
+-        barcode_id: stock_line.barcode_id.clone(),
++        return Ok(StockLineJob {
++            stock_in_out_or_update: Some(StockChange::StockUpdate(updated_stock_line)),
++            stocktake_line: None,
++            location_movement: None,
++            update_inventory_adjustment_reason: None,
++        });
+     };
+ 
+-    let stock_line_item =
+-        match ItemRowRepository::new(connection).find_active_by_id(&stock_line_item_id)? {
+-            Some(item) => item,
+-            None => {
+-                return Err(UpdateStocktakeError::InternalError(format!(
+-                    "Can't find item {} for existing stocktake line {}!",
+-                    &stock_line_item_id, stocktake_line.line.id
+-                )))
+-            }
+-        };
+-
+     let quantity_change = f64::abs(delta);
+-    let shipment_line = if quantity_change > 0.0 {
+-        let (invoice_id, r#type) = if delta > 0.0 {
+-            (inventory_addition_id.to_string(), InvoiceLineType::StockIn)
+-        } else {
+-            (
+-                inventory_reduction_id.to_string(),
+-                InvoiceLineType::StockOut,
+-            )
+-        };
+-        Some(InvoiceLineRow {
+-            id: uuid(),
+-            r#type,
+-            invoice_id,
+-            item_link_id: stock_line_item_id,
+-            item_name: stock_line_item.name,
+-            item_code: stock_line_item.code,
+-            stock_line_id: Some(stock_line.id.clone()),
+-            location_id: stock_line.location_id.clone(),
+-            batch: stock_line.batch.clone(),
+-            expiry_date: stock_line.expiry_date,
+-            pack_size: stock_line.pack_size,
+-            cost_price_per_pack: stock_line.cost_price_per_pack,
+-            sell_price_per_pack: stock_line.sell_price_per_pack,
+-            total_before_tax: 0.0,
+-            total_after_tax: 0.0,
+-            tax_percentage: None,
++    let invoice_line_id = uuid();
++
++    let update_inventory_adjustment_reason = generate_update_inventory_adjustment_reason(
++        invoice_line_id.clone(),
++        row.inventory_adjustment_reason_id,
++    );
++
++    let stock_in_or_out_line = if delta > 0.0 {
++        StockChange::StockIn(InsertStockInLine {
++            r#type: StockInType::InventoryAddition,
++            id: invoice_line_id,
++            invoice_id: inventory_addition_id.to_string(),
+             number_of_packs: quantity_change,
+-            note: stock_line.note.clone(),
+-            inventory_adjustment_reason_id: stocktake_line
+-                .line
+-                .inventory_adjustment_reason_id
+-                .clone(),
+-            return_reason_id: None,
+-            foreign_currency_price_before_tax: None,
++            location: row.location_id.map(|id| NullableUpdate { value: Some(id) }),
++            pack_size: i32_to_u32(pack_size),
++            batch: row.batch,
++            cost_price_per_pack,
++            sell_price_per_pack,
++            expiry_date,
++            // From existing stock line
++            stock_line_id: Some(stock_line_row.id),
++            item_id: stock_line_row.item_link_id,
++            stock_on_hold: stock_line_row.on_hold,
++            note: stock_line_row.note,
++            // Default
++            barcode: stock_line_row.barcode_id,
++            total_before_tax: None,
++            tax_percentage: None,
+         })
+     } else {
+-        None
++        StockChange::StockOut(InsertStockOutLine {
++            r#type: StockOutType::InventoryReduction,
++            id: invoice_line_id,
++            invoice_id: inventory_reduction_id.to_string(),
++            stock_line_id: stock_line_row.id,
++            number_of_packs: quantity_change,
++            note: stock_line_row.note,
++            location_id: row.location_id,
++            batch: row.batch,
++            pack_size: row.pack_size,
++            expiry_date: row.expiry_date,
++            cost_price_per_pack: None,
++            sell_price_per_pack: None,
++            total_before_tax: None,
++            tax_percentage: None,
++        })
+     };
+ 
+-    let location_movement = if counted_number_of_packs <= 0.0 {
+-        generate_exit_location_movements(connection, &store_id, updated_line.clone())?
++    // if reducing to 0, create movement to exit location
++    let location_movement = if counted_number_of_packs == 0.0 {
++        generate_exit_location_movements(connection, &store_id, stock_line.clone())?
+     } else {
+         None
+     };
+ 
+     Ok(StockLineJob {
+-        stock_line: updated_line,
+-        invoice_line: shipment_line,
+-        stocktake_line: None,
++        stock_in_out_or_update: Some(stock_in_or_out_line),
+         location_movement,
++        stocktake_line: None,
++        update_inventory_adjustment_reason,
+     })
+ }
+ 
+-/// Returns new stock line and matching invoice line
+ fn generate_new_stock_line(
+-    connection: &StorageConnection,
+     store_id: &str,
+     inventory_addition_id: &str,
+-    stocktake_line: StocktakeLine,
++    stocktake_line: &StocktakeLine,
+ ) -> Result<StockLineJob, UpdateStocktakeError> {
+-    let counted_number_of_packs = stocktake_line.line.counted_number_of_packs.unwrap_or(0.0);
+-    let row = stocktake_line.line;
+-    let pack_size = row.pack_size.unwrap_or(0);
+-    let cost_price_per_pack = row.cost_price_per_pack.unwrap_or(0.0);
+-    let sell_price_per_pack = row.sell_price_per_pack.unwrap_or(0.0);
++    let row = stocktake_line.line.to_owned();
++    let item_id = stocktake_line.item.id.to_owned();
+     let stock_line_id = uuid();
+ 
+-    // update the stock_line_id in the existing stocktake_line
+-    let updated_stocktake_line = inline_edit(&row, |mut l: StocktakeLineRow| {
+-        l.stock_line_id = Some(stock_line_id.clone());
+-        l
+-    });
++    let counted_number_of_packs = stocktake_line.line.counted_number_of_packs.unwrap_or(0.0);
+ 
+-    let supplier_id = if let Some(supplier_link_id) = stocktake_line
+-        .stock_line
+-        .as_ref()
+-        .and_then(|it| it.supplier_link_id.clone())
+-    {
+-        Some(
+-            NameLinkRowRepository::new(connection)
+-                .find_one_by_id(&supplier_link_id)?
+-                .ok_or(UpdateStocktakeError::InternalError(format!(
+-                    "Name link ({}) not found",
+-                    supplier_link_id
+-                )))?
+-                .name_id,
+-        )
+-    } else {
+-        None
++    // If no counted packs, we shouldn't create a stock line
++    if counted_number_of_packs == 0.0 {
++        return Ok(StockLineJob {
++            stock_in_out_or_update: None,
++            location_movement: None,
++            stocktake_line: None,
++            update_inventory_adjustment_reason: None,
++        });
++    }
++
++    // We're creating a new stock line, so need to update the stocktake line to link to the new stock line
++    let updated_stocktake_line = StocktakeLineRow {
++        stock_line_id: Some(stock_line_id.clone()),
++        ..row.clone()
+     };
+ 
+-    let item_id = stocktake_line.item.id;
+-    let new_line = StockLineRow {
+-        id: stock_line_id,
+-        item_link_id: item_id.clone(),
+-        store_id: store_id.to_string(),
+-        location_id: row.location_id.clone(),
+-        batch: row.batch.clone(),
+-        pack_size,
++    let pack_size = row.pack_size.unwrap_or(0);
++    let cost_price_per_pack = row.cost_price_per_pack.unwrap_or(0.0);
++    let sell_price_per_pack = row.sell_price_per_pack.unwrap_or(0.0);
++    let invoice_line_id = uuid();
++
++    let update_inventory_adjustment_reason = generate_update_inventory_adjustment_reason(
++        invoice_line_id.clone(),
++        row.inventory_adjustment_reason_id,
++    );
++
++    let stock_in_line = StockChange::StockIn(InsertStockInLine {
++        r#type: StockInType::InventoryAddition,
++        id: invoice_line_id,
++        invoice_id: inventory_addition_id.to_string(),
++        number_of_packs: counted_number_of_packs,
++        location: row
++            .location_id
++            .clone()
++            .map(|id| NullableUpdate { value: Some(id) }),
++        pack_size: i32_to_u32(pack_size),
++        batch: row.batch,
+         cost_price_per_pack,
+         sell_price_per_pack,
+-        available_number_of_packs: counted_number_of_packs,
+-        total_number_of_packs: counted_number_of_packs,
+         expiry_date: row.expiry_date,
+-        on_hold: false,
+-        note: row.note.clone(),
+-        supplier_link_id: supplier_id,
+-        barcode_id: None,
+-    };
+-
+-    let item = match ItemRowRepository::new(connection).find_active_by_id(&item_id)? {
+-        Some(item) => item,
+-        None => {
+-            return Err(UpdateStocktakeError::InternalError(format!(
+-                "Can't find item {} for new stocktake line {}!",
+-                &item_id, row.id
+-            )))
+-        }
+-    };
+-    let shipment_line = if counted_number_of_packs > 0.0 {
+-        Some(InvoiceLineRow {
+-            id: uuid(),
+-            r#type: InvoiceLineType::StockIn,
+-            invoice_id: inventory_addition_id.to_string(),
+-            item_link_id: item.id,
+-            item_name: item.name,
+-            item_code: item.code,
+-            stock_line_id: Some(new_line.id.clone()),
+-            location_id: row.location_id,
+-            batch: row.batch,
+-            expiry_date: row.expiry_date,
+-            pack_size,
+-            cost_price_per_pack,
+-            sell_price_per_pack,
+-            total_before_tax: 0.0,
+-            total_after_tax: 0.0,
+-            tax_percentage: None,
+-            number_of_packs: counted_number_of_packs,
+-            note: row.note,
+-            inventory_adjustment_reason_id: row.inventory_adjustment_reason_id,
+-            return_reason_id: None,
+-            foreign_currency_price_before_tax: None,
+-        })
+-    } else {
+-        None
+-    };
++        stock_line_id: Some(stock_line_id.clone()),
++        item_id,
++        note: row.note,
++        // Default
++        stock_on_hold: false,
++        barcode: None,
++        total_before_tax: None,
++        tax_percentage: None,
++    });
+ 
+-    let location_movement = if new_line.location_id.is_some() {
++    // If new stock line has a location, create location movement
++    let location_movement = if row.location_id.is_some() {
+         Some(generate_enter_location_movements(
+             store_id.to_owned(),
+-            new_line.id.to_owned(),
+-            new_line.location_id.to_owned(),
++            stock_line_id,
++            row.location_id,
+         ))
+     } else {
+         None
+     };
+ 
+     Ok(StockLineJob {
+-        stock_line: new_line,
+-        invoice_line: shipment_line,
+-        stocktake_line: Some(updated_stocktake_line),
++        stock_in_out_or_update: Some(stock_in_line),
+         location_movement,
++        stocktake_line: Some(updated_stocktake_line),
++        update_inventory_adjustment_reason,
+     })
+ }
+ 
+@@ -565,21 +555,22 @@ fn generate(
+     let inventory_reduction_id = uuid();
+ 
+     // finalise the stocktake
+-    let mut inventory_addition_lines: Vec<InvoiceLineRow> = Vec::new();
+-    let mut inventory_reduction_lines: Vec<InvoiceLineRow> = Vec::new();
++    let mut inventory_addition_lines: Vec<InsertStockInLine> = Vec::new();
++    let mut inventory_reduction_lines: Vec<InsertStockOutLine> = Vec::new();
+     let mut stock_lines: Vec<StockLineRow> = Vec::new();
++    let mut inventory_adjustment_reason_updates: Vec<UpdateInventoryAdjustmentReason> = Vec::new();
+     let mut stocktake_line_updates: Vec<StocktakeLineRow> = Vec::new();
+     let mut location_movements: Vec<LocationMovementRow> = Vec::new();
+ 
+     for stocktake_line in stocktake_lines {
+         let StockLineJob {
+-            stock_line,
+-            invoice_line,
+             stocktake_line,
+             location_movement,
++            stock_in_out_or_update,
++            update_inventory_adjustment_reason,
+         } = if let Some(ref stock_line) = stocktake_line.stock_line {
+             // adjust existing stock line
+-            generate_stock_line_update(
++            generate_stock_in_out_or_update(
+                 connection,
+                 store_id,
+                 &inventory_addition_id,
+@@ -589,20 +580,22 @@ fn generate(
+             )?
+         } else {
+             // create new stock line
+-            generate_new_stock_line(
+-                connection,
+-                &store_id,
+-                &inventory_addition_id,
+-                stocktake_line,
+-            )?
++            generate_new_stock_line(&store_id, &inventory_addition_id, &stocktake_line)?
+         };
+-        stock_lines.push(stock_line);
+-        if let Some(shipment_line) = invoice_line {
+-            if shipment_line.r#type == InvoiceLineType::StockIn {
+-                inventory_addition_lines.push(shipment_line)
+-            } else {
+-                inventory_reduction_lines.push(shipment_line)
++        match stock_in_out_or_update {
++            Some(StockChange::StockIn(line)) => {
++                inventory_addition_lines.push(line);
+             }
++            Some(StockChange::StockOut(line)) => {
++                inventory_reduction_lines.push(line);
++            }
++            Some(StockChange::StockUpdate(stock_line)) => {
++                stock_lines.push(stock_line);
++            }
++            None => {}
++        }
++        if let Some(update_reason) = update_inventory_adjustment_reason {
++            inventory_adjustment_reason_updates.push(update_reason);
+         }
+         if let Some(stocktake_line) = stocktake_line {
+             stocktake_line_updates.push(stocktake_line);
+@@ -629,7 +622,7 @@ fn generate(
+         user_id: Some(user_id.to_string()),
+         name_link_id: inventory_adjustment_name.id,
+         store_id: store_id.to_string(),
+-        status: InvoiceStatus::Verified,
++        status: InvoiceStatus::New,
+         verified_datetime: Some(now),
+         // Default
+         currency_id: Some(currency.currency_row.id),
+@@ -686,7 +679,9 @@ fn generate(
+         stocktake_lines: stocktake_line_updates,
+         inventory_addition,
+         inventory_reduction,
+-        inventory_adjustment_lines: [inventory_addition_lines, inventory_reduction_lines].concat(),
++        inventory_addition_lines,
++        inventory_reduction_lines,
++        inventory_adjustment_reason_updates,
+         stock_lines,
+         location_movements: Some(location_movements),
+         stocktake_lines_to_trim: unallocated_lines_to_trim(connection, &stocktake, &ctx.store_id)?,
+@@ -706,30 +701,65 @@ pub fn update_stocktake(
+             let result = generate(&ctx, input, existing, stocktake_lines, status_changed)?;
+ 
+             // write data to the DB
+-            // write new stock lines
+             let stock_line_repo = StockLineRowRepository::new(connection);
++            let stocktake_line_repo = StocktakeLineRowRepository::new(connection);
++            let invoice_row_repo = InvoiceRowRepository::new(connection);
++            let invoice_line_repo = InvoiceLineRowRepository::new(&connection);
++
++            // write updated stock lines (stock line info has changed, but no inventory adjustment)
+             for stock_line in result.stock_lines {
+                 stock_line_repo.upsert_one(&stock_line)?;
+             }
+-            // write updated stocktake lines
+-            let stocktake_line_repo = StocktakeLineRowRepository::new(connection);
++            // write inventory adjustment
++            if let Some(inventory_addition) = result.inventory_addition.clone() {
++                invoice_row_repo.upsert_one(&inventory_addition)?;
++            }
++            if let Some(inventory_reduction) = result.inventory_reduction.clone() {
++                invoice_row_repo.upsert_one(&inventory_reduction)?;
++            }
++            // write inventory adjustment lines (and update/introduce stock)
++            for line in result.inventory_addition_lines {
++                let line_id = line.id.clone();
++                insert_stock_in_line(ctx, line).map_err(|error| {
++                    UpdateStocktakeError::InsertStockInLineError { line_id, error }
++                })?;
++            }
++            for line in result.inventory_reduction_lines {
++                let line_id = line.id.clone();
++                insert_stock_out_line(ctx, line).map_err(|error| {
++                    UpdateStocktakeError::InsertStockOutLineError { line_id, error }
++                })?;
++            }
++            // Add inventory adjustment reasons to the invoice lines
++            for update_reason in result.inventory_adjustment_reason_updates {
++                invoice_line_repo.update_inventory_adjustment_reason_id(
++                    &update_reason.invoice_line_id,
++                    update_reason.reason_id,
++                )?;
++            }
++            // write updated stocktake lines (update with stock_line_ids for newly created stock lines)
+             for stocktake_line in result.stocktake_lines {
+                 stocktake_line_repo.upsert_one(&stocktake_line)?;
+             }
+-            // write inventory adjustment
++
++            // Set inventory adjustment invoices to Verified after all lines have been added
+             if let Some(inventory_addition) = result.inventory_addition {
+-                let shipment_repo = InvoiceRowRepository::new(connection);
+-                shipment_repo.upsert_one(&inventory_addition)?;
++                let verified_addition = InvoiceRow {
++                    status: InvoiceStatus::Verified,
++                    verified_datetime: Some(Utc::now().naive_utc()),
++                    ..inventory_addition
++                };
++                invoice_row_repo.upsert_one(&verified_addition)?;
+             }
+             if let Some(inventory_reduction) = result.inventory_reduction {
+-                let shipment_repo = InvoiceRowRepository::new(connection);
+-                shipment_repo.upsert_one(&inventory_reduction)?;
+-            }
+-            // write inventory adjustment lines
+-            let shipment_line_repo = InvoiceLineRowRepository::new(connection);
+-            for line in result.inventory_adjustment_lines {
+-                shipment_line_repo.upsert_one(&line)?;
++                let verified_reduction = InvoiceRow {
++                    status: InvoiceStatus::Verified,
++                    verified_datetime: Some(Utc::now().naive_utc()),
++                    ..inventory_reduction
++                };
++                invoice_row_repo.upsert_one(&verified_reduction)?;
+             }
++
+             StocktakeRowRepository::new(connection).upsert_one(&result.stocktake)?;
+             // trim uncounted stocktake lines
+             if let Some(lines_to_trim) = result.stocktake_lines_to_trim {
+@@ -790,7 +820,7 @@ mod test {
+         StocktakeLineRepository, StocktakeLineRow, StocktakeLineRowRepository, StocktakeRepository,
+         StocktakeRow, StocktakeStatus,
+     };
+-    use util::{inline_edit, inline_init};
++    use util::{constants::INVENTORY_ADJUSTMENT_NAME_CODE, inline_edit, inline_init};
+ 
+     use crate::{
+         service_provider::ServiceProvider,
+@@ -1142,7 +1172,10 @@ mod test {
+             stocktake_line.sell_price_per_pack.unwrap()
+         );
+         assert_eq!(stock_line.note, stocktake_line.note);
+-        assert_eq!(stock_line.supplier_link_id, None);
++        assert_eq!(
++            stock_line.supplier_link_id.unwrap(),
++            INVENTORY_ADJUSTMENT_NAME_CODE.to_string()
++        );
+ 
+         // assert stocktake_line has been updated
+         let updated_stocktake_line = StocktakeLineRowRepository::new(&context.connection)
