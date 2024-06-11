@@ -1,6 +1,3 @@
-diff --git a/diff.it b/diff.it
-new file mode 100644
-index 000000000..e69de29bb
 diff --git a/server/graphql/batch_mutations/src/batch_inbound_shipment.rs b/server/graphql/batch_mutations/src/batch_inbound_shipment.rs
 index 898f2e90c..b6ceb7cd7 100644
 --- a/server/graphql/batch_mutations/src/batch_inbound_shipment.rs
@@ -84,7 +81,7 @@ index d97d3c8cf..ff8482def 100644
          | ServiceError::DatabaseError(_) => InternalError(formatted_error),
      };
 diff --git a/server/graphql/invoice/src/mutations/inbound_shipment/delete.rs b/server/graphql/invoice/src/mutations/inbound_shipment/delete.rs
-index 9c9eb353e..c11d7f1b7 100644
+index 03b15fa5d..b477d68bb 100644
 --- a/server/graphql/invoice/src/mutations/inbound_shipment/delete.rs
 +++ b/server/graphql/invoice/src/mutations/inbound_shipment/delete.rs
 @@ -118,7 +118,7 @@ mod test {
@@ -194,7 +191,7 @@ index 1d5163f7b..5682977a9 100644
              );
              Ok("deleted id".to_owned())
 diff --git a/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/insert.rs b/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/insert.rs
-index 5ecae5531..69c1c091e 100644
+index 32fc8ccd5..c19b087a1 100644
 --- a/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/insert.rs
 +++ b/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/insert.rs
 @@ -9,8 +9,8 @@ use graphql_types::types::InvoiceLineNode;
@@ -311,7 +308,7 @@ index 5ecae5531..69c1c091e 100644
              );
              Ok(InvoiceLine {
 diff --git a/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/update.rs b/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/update.rs
-index 7959bd9d7..6bc22ba2e 100644
+index fb8304a5e..d09be89aa 100644
 --- a/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/update.rs
 +++ b/server/graphql/invoice_line/src/mutations/inbound_shipment_line/line/update.rs
 @@ -10,8 +10,8 @@ use graphql_types::types::InvoiceLineNode;
@@ -596,7 +593,7 @@ index c4d1ae786..d5ad35d0f 100644
  
      Err(graphql_error.extend())
 diff --git a/server/service/src/invoice/inbound_shipment/batch.rs b/server/service/src/invoice/inbound_shipment/batch.rs
-index a2afa0060..96c118ab3 100644
+index 91ea85d55..096494f70 100644
 --- a/server/service/src/invoice/inbound_shipment/batch.rs
 +++ b/server/service/src/invoice/inbound_shipment/batch.rs
 @@ -2,19 +2,17 @@ use repository::{Invoice, InvoiceLine, RepositoryError};
@@ -605,8 +602,8 @@ index a2afa0060..96c118ab3 100644
      invoice_line::{
 -        inbound_shipment_line::{
 -            delete_inbound_shipment_line, insert_inbound_shipment_line,
--            update_inbound_shipment_line,
--            DeleteInboundShipmentLine, DeleteInboundShipmentLineError, InsertInboundShipmentLine,
+-            update_inbound_shipment_line, DeleteInboundShipmentLine,
+-            DeleteInboundShipmentLineError, InsertInboundShipmentLine,
 -            InsertInboundShipmentLineError, UpdateInboundShipmentLine,
 -            UpdateInboundShipmentLineError,
 -        },
@@ -719,7 +716,7 @@ index a2afa0060..96c118ab3 100644
 -                    input.invoice_id = "new_id".to_string();
 -                    input.id = "new_line_id".to_string();
 -                    input.item_id = mock_item_a().id;
--                    input.pack_size = 1;
+-                    input.pack_size = 1.0;
 -                    input.number_of_packs = 1.0;
 -                },
 -            )]),
@@ -727,7 +724,7 @@ index a2afa0060..96c118ab3 100644
 +                input.invoice_id = "new_id".to_string();
 +                input.id = "new_line_id".to_string();
 +                input.item_id = mock_item_a().id;
-+                input.pack_size = 1;
++                input.pack_size = 1.0;
 +                input.number_of_packs = 1.0;
 +                input.r#type = StockInType::InboundShipment;
 +            })]),
@@ -735,7 +732,7 @@ index a2afa0060..96c118ab3 100644
              delete_line: None,
              update_shipment: None,
 diff --git a/server/service/src/invoice/inbound_shipment/delete/mod.rs b/server/service/src/invoice/inbound_shipment/delete/mod.rs
-index 336cbf826..70874c9ba 100644
+index 28281372d..c25d63194 100644
 --- a/server/service/src/invoice/inbound_shipment/delete/mod.rs
 +++ b/server/service/src/invoice/inbound_shipment/delete/mod.rs
 @@ -7,8 +7,8 @@ use validate::validate;
@@ -813,7 +810,7 @@ index 9836706da..0fdd8fe21 100644
      pub invoice: InvoiceRow,
      pub stock_in_line: InsertStockInLine,
 diff --git a/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/generate.rs b/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/generate.rs
-index da7532f28..2917273e7 100644
+index da7532f28..942eaf292 100644
 --- a/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/generate.rs
 +++ b/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/generate.rs
 @@ -1,16 +1,31 @@
@@ -831,7 +828,7 @@ index da7532f28..2917273e7 100644
 +use crate::invoice_line::stock_in_line::{InsertStockInLine, StockInType};
 +use crate::invoice_line::stock_out_line::{InsertStockOutLine, StockOutType};
  use crate::number::next_number;
-+use crate::{i32_to_u32, NullableUpdate};
++use crate::NullableUpdate;
  
  use super::{AdjustmentType, InsertInventoryAdjustment};
  
@@ -910,7 +907,7 @@ index da7532f28..2917273e7 100644
 +            // From existing stock line
 +            item_id: stock_line.item_row.id,
 +            location: location_id.map(|id| NullableUpdate { value: Some(id) }),
-+            pack_size: i32_to_u32(pack_size),
++            pack_size,
 +            batch,
 +            cost_price_per_pack,
 +            sell_price_per_pack,
@@ -956,7 +953,7 @@ index da7532f28..2917273e7 100644
 +    })
  }
 diff --git a/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/insert.rs b/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/insert.rs
-index 3c8300353..567ae25d3 100644
+index 98689bb3d..875d86e7a 100644
 --- a/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/insert.rs
 +++ b/server/service/src/invoice/inventory_adjustment/adjust_existing_stock/insert.rs
 @@ -2,14 +2,16 @@ use chrono::Utc;
@@ -1070,7 +1067,7 @@ index 3c8300353..567ae25d3 100644
  
          // Positive adjustment
          let created_invoice = service
-@@ -307,12 +348,12 @@ mod test {
+@@ -309,12 +350,12 @@ mod test {
  
          assert_eq!(
              updated_stockline.available_number_of_packs,
@@ -1143,7 +1140,7 @@ index 10c50544c..7ce2ead9e 100644
          .collect();
  
 diff --git a/server/service/src/invoice/outbound_shipment/batch.rs b/server/service/src/invoice/outbound_shipment/batch.rs
-index 1fe182863..6d5d301da 100644
+index 7959c93fe..f2ed6171a 100644
 --- a/server/service/src/invoice/outbound_shipment/batch.rs
 +++ b/server/service/src/invoice/outbound_shipment/batch.rs
 @@ -299,7 +299,7 @@ mod test {
@@ -1156,7 +1153,7 @@ index 1fe182863..6d5d301da 100644
                  input.stock_line_id = mock_stock_line_a().id;
                  input.number_of_packs = 1.0
 diff --git a/server/service/src/invoice/prescription/batch.rs b/server/service/src/invoice/prescription/batch.rs
-index 1031185c8..a33a04d93 100644
+index d668dc9c5..6662ccd48 100644
 --- a/server/service/src/invoice/prescription/batch.rs
 +++ b/server/service/src/invoice/prescription/batch.rs
 @@ -155,7 +155,7 @@ mod test {
@@ -1170,7 +1167,7 @@ index 1031185c8..a33a04d93 100644
                  input.number_of_packs = 1.0
 diff --git a/server/service/src/invoice_line/inbound_shipment_line/delete/mod.rs b/server/service/src/invoice_line/inbound_shipment_line/delete/mod.rs
 deleted file mode 100644
-index e6c00d150..000000000
+index fca546184..000000000
 --- a/server/service/src/invoice_line/inbound_shipment_line/delete/mod.rs
 +++ /dev/null
 @@ -1,222 +0,0 @@
@@ -1290,7 +1287,7 @@ index e6c00d150..000000000
 -                r.stock_line_id = Some(String::from("item_a_line_a"));
 -                r.batch = Some(String::from("item_a_line_a"));
 -                r.expiry_date = Some(NaiveDate::from_ymd_opt(2020, 8, 1).unwrap());
--                r.pack_size = 1;
+-                r.pack_size = 1.0;
 -                r.total_before_tax = 0.87;
 -                r.total_after_tax = 1.0;
 -                r.tax_percentage = Some(15.0);
@@ -1390,7 +1387,7 @@ index e6c00d150..000000000
 -        //test entry has been deleted
 -        assert_eq!(
 -            InvoiceLineRowRepository::new(&connection)
--                .find_one_by_id_option(&invoice_line_id)
+-                .find_one_by_id(&invoice_line_id)
 -                .unwrap(),
 -            None
 -        );
@@ -1398,7 +1395,7 @@ index e6c00d150..000000000
 -}
 diff --git a/server/service/src/invoice_line/inbound_shipment_line/delete/validate.rs b/server/service/src/invoice_line/inbound_shipment_line/delete/validate.rs
 deleted file mode 100644
-index 9c4cda347..000000000
+index 629e31229..000000000
 --- a/server/service/src/invoice_line/inbound_shipment_line/delete/validate.rs
 +++ /dev/null
 @@ -1,45 +0,0 @@
@@ -1408,7 +1405,7 @@ index 9c4cda347..000000000
 -        inbound_shipment_line::check_batch,
 -        validate::{
 -            check_line_belongs_to_invoice, check_line_not_associated_with_stocktake,
--            check_line_row_exists_option,
+-            check_line_row_exists,
 -        },
 -    },
 -};
@@ -1423,7 +1420,7 @@ index 9c4cda347..000000000
 -) -> Result<(InvoiceRow, InvoiceLineRow), DeleteInboundShipmentLineError> {
 -    use DeleteInboundShipmentLineError::*;
 -
--    let line = check_line_row_exists_option(connection, &input.id)?.ok_or(LineDoesNotExist)?;
+-    let line = check_line_row_exists(connection, &input.id)?.ok_or(LineDoesNotExist)?;
 -    let invoice = check_invoice_exists(&line.invoice_id, connection)?.ok_or(InvoiceDoesNotExist)?;
 -
 -    if !check_store(&invoice, store_id) {
@@ -1449,7 +1446,7 @@ index 9c4cda347..000000000
 -}
 diff --git a/server/service/src/invoice_line/inbound_shipment_line/generate.rs b/server/service/src/invoice_line/inbound_shipment_line/generate.rs
 deleted file mode 100644
-index b5038b6eb..000000000
+index 9afa3b78b..000000000
 --- a/server/service/src/invoice_line/inbound_shipment_line/generate.rs
 +++ /dev/null
 @@ -1,67 +0,0 @@
@@ -1463,7 +1460,7 @@ index b5038b6eb..000000000
 -            * stock_line.pack_size as f64,
 -        cost_price_per_pack: stock_line.cost_price_per_pack / stock_line.pack_size as f64,
 -        sell_price_per_pack: stock_line.sell_price_per_pack / stock_line.pack_size as f64,
--        pack_size: 1,
+-        pack_size: 1.0,
 -        ..stock_line
 -    }
 -}
@@ -1473,7 +1470,7 @@ index b5038b6eb..000000000
 -        number_of_packs: invoice_line.number_of_packs * invoice_line.pack_size as f64,
 -        sell_price_per_pack: invoice_line.sell_price_per_pack / invoice_line.pack_size as f64,
 -        cost_price_per_pack: invoice_line.cost_price_per_pack / invoice_line.pack_size as f64,
--        pack_size: 1,
+-        pack_size: 1.0,
 -        ..invoice_line
 -    }
 -}
@@ -1522,10 +1519,10 @@ index b5038b6eb..000000000
 -}
 diff --git a/server/service/src/invoice_line/inbound_shipment_line/insert/generate.rs b/server/service/src/invoice_line/inbound_shipment_line/insert/generate.rs
 deleted file mode 100644
-index dacd2e662..000000000
+index 73c36eb9f..000000000
 --- a/server/service/src/invoice_line/inbound_shipment_line/insert/generate.rs
 +++ /dev/null
-@@ -1,124 +0,0 @@
+@@ -1,123 +0,0 @@
 -use crate::{
 -    invoice::common::{
 -        calculate_foreign_currency_total, calculate_total_after_tax,
@@ -1538,7 +1535,6 @@ index dacd2e662..000000000
 -        },
 -    },
 -    store_preference::get_store_preferences,
--    u32_to_i32,
 -};
 -use repository::{
 -    InvoiceLineRow, InvoiceLineType, InvoiceRow, InvoiceStatus, ItemRow, RepositoryError,
@@ -1631,7 +1627,7 @@ index dacd2e662..000000000
 -        invoice_id,
 -        item_link_id: item_id,
 -        location_id: location.map(|l| l.value).unwrap_or_default(),
--        pack_size: u32_to_i32(pack_size),
+-        pack_size,
 -        batch,
 -        expiry_date,
 -        sell_price_per_pack,
@@ -1652,10 +1648,10 @@ index dacd2e662..000000000
 -}
 diff --git a/server/service/src/invoice_line/inbound_shipment_line/insert/mod.rs b/server/service/src/invoice_line/inbound_shipment_line/insert/mod.rs
 deleted file mode 100644
-index bf890cd53..000000000
+index 81979fc9f..000000000
 --- a/server/service/src/invoice_line/inbound_shipment_line/insert/mod.rs
 +++ /dev/null
-@@ -1,351 +0,0 @@
+@@ -1,353 +0,0 @@
 -use crate::{
 -    invoice_line::query::get_invoice_line, service_provider::ServiceContext, NullableUpdate,
 -    WithDBError,
@@ -1678,7 +1674,7 @@ index bf890cd53..000000000
 -    pub invoice_id: String,
 -    pub item_id: String,
 -    pub location: Option<NullableUpdate<String>>,
--    pub pack_size: u32,
+-    pub pack_size: f64,
 -    pub batch: Option<String>,
 -    pub cost_price_per_pack: f64,
 -    pub sell_price_per_pack: f64,
@@ -1808,7 +1804,7 @@ index bf890cd53..000000000
 -                    r.id = "new invoice line id".to_string();
 -                    r.invoice_id = "new invoice id".to_string();
 -                    r.item_id = mock_item_a().id.clone();
--                    r.pack_size = 1;
+-                    r.pack_size = 1.0;
 -                    r.number_of_packs = 1.0;
 -                }),
 -            ),
@@ -1823,7 +1819,7 @@ index bf890cd53..000000000
 -                    r.id = "new invoice line id".to_string();
 -                    r.invoice_id = mock_outbound_shipment_e().id;
 -                    r.item_id = mock_item_a().id.clone();
--                    r.pack_size = 1;
+-                    r.pack_size = 1.0;
 -                    r.number_of_packs = 1.0;
 -                }),
 -            ),
@@ -1843,7 +1839,7 @@ index bf890cd53..000000000
 -                        value: Some("invalid".to_string()),
 -                    });
 -                    r.item_id = mock_item_a().id.clone();
--                    r.pack_size = 1;
+-                    r.pack_size = 1.0;
 -                    r.number_of_packs = 1.0;
 -                }),
 -            ),
@@ -1860,7 +1856,7 @@ index bf890cd53..000000000
 -                        .invoice_id
 -                        .clone();
 -                    r.item_id = "invalid".to_string();
--                    r.pack_size = 1;
+-                    r.pack_size = 1.0;
 -                    r.number_of_packs = 1.0;
 -                }),
 -            ),
@@ -1877,7 +1873,7 @@ index bf890cd53..000000000
 -                        .invoice_id
 -                        .clone();
 -                    r.item_id = mock_item_a().id.clone();
--                    r.pack_size = 0;
+-                    r.pack_size = 0.0;
 -                    r.number_of_packs = 1.0;
 -                }),
 -            ),
@@ -1894,7 +1890,7 @@ index bf890cd53..000000000
 -                        .invoice_id
 -                        .clone();
 -                    r.item_id = mock_item_a().id.clone();
--                    r.pack_size = 1;
+-                    r.pack_size = 1.0;
 -                    r.number_of_packs = -1.0;
 -                }),
 -            ),
@@ -1910,7 +1906,7 @@ index bf890cd53..000000000
 -                    r.id = "new invoice line id".to_string();
 -                    r.invoice_id = mock_inbound_shipment_c().id.clone();
 -                    r.item_id = mock_item_a().id.clone();
--                    r.pack_size = 1;
+-                    r.pack_size = 1.0;
 -                    r.number_of_packs = 1.0;
 -                }),
 -            ),
@@ -1943,7 +1939,7 @@ index bf890cd53..000000000
 -                        .invoice_id
 -                        .clone();
 -                    r.item_id = mock_item_a().id.clone();
--                    r.pack_size = 1;
+-                    r.pack_size = 1.0;
 -                    r.number_of_packs = 1.0;
 -                }),
 -            )
@@ -1951,6 +1947,7 @@ index bf890cd53..000000000
 -
 -        let inbound_line = InvoiceLineRowRepository::new(&connection)
 -            .find_one_by_id("new invoice line id")
+-            .unwrap()
 -            .unwrap();
 -
 -        assert_eq!(
@@ -1958,7 +1955,7 @@ index bf890cd53..000000000
 -            inline_edit(&inbound_line, |mut u| {
 -                u.id = "new invoice line id".to_string();
 -                u.item_link_id = mock_item_a().id.clone();
--                u.pack_size = 1;
+-                u.pack_size = 1.0;
 -                u.number_of_packs = 1.0;
 -                u
 -            })
@@ -1983,7 +1980,7 @@ index bf890cd53..000000000
 -                        .invoice_id
 -                        .clone();
 -                    r.item_id = mock_item_a().id.clone();
--                    r.pack_size = 10;
+-                    r.pack_size = 10.0;
 -                    r.number_of_packs = 20.0;
 -                    r.sell_price_per_pack = 100.0;
 -                }),
@@ -1992,6 +1989,7 @@ index bf890cd53..000000000
 -
 -        let inbound_line = InvoiceLineRowRepository::new(&connection)
 -            .find_one_by_id("new invoice line pack to one")
+-            .unwrap()
 -            .unwrap();
 -
 -        assert_eq!(
@@ -1999,7 +1997,7 @@ index bf890cd53..000000000
 -            inline_edit(&inbound_line, |mut u| {
 -                u.id = "new invoice line pack to one".to_string();
 -                u.item_link_id = mock_item_a().id.clone();
--                u.pack_size = 1;
+-                u.pack_size = 1.0;
 -                u.number_of_packs = 200.0;
 -                u.sell_price_per_pack = 10.0;
 -                u
@@ -2009,16 +2007,16 @@ index bf890cd53..000000000
 -}
 diff --git a/server/service/src/invoice_line/inbound_shipment_line/insert/validate.rs b/server/service/src/invoice_line/inbound_shipment_line/insert/validate.rs
 deleted file mode 100644
-index 8bee2e542..000000000
+index efb897f57..000000000
 --- a/server/service/src/invoice_line/inbound_shipment_line/insert/validate.rs
 +++ /dev/null
-@@ -1,54 +0,0 @@
+@@ -1,55 +0,0 @@
 -use crate::{
 -    invoice::{check_invoice_exists, check_invoice_is_editable, check_invoice_type, check_store},
 -    invoice_line::{
 -        check_location_exists,
 -        inbound_shipment_line::check_pack_size,
--        validate::{check_item_exists, check_line_does_not_exist, check_number_of_packs},
+-        validate::{check_item_exists, check_line_exists, check_number_of_packs},
 -    },
 -};
 -use repository::{InvoiceRow, InvoiceType, ItemRow, StorageConnection};
@@ -2032,9 +2030,10 @@ index 8bee2e542..000000000
 -) -> Result<(ItemRow, InvoiceRow), InsertInboundShipmentLineError> {
 -    use InsertInboundShipmentLineError::*;
 -
--    if !check_line_does_not_exist(connection, &input.id)? {
+-    if let Some(_) = check_line_exists(connection, &input.id)? {
 -        return Err(LineAlreadyExists);
 -    }
+-
 -    if !check_pack_size(Some(input.pack_size)) {
 -        return Err(PackSizeBelowOne);
 -    }
@@ -2086,10 +2085,10 @@ index 74be8c3ff..000000000
 -pub use self::validate::*;
 diff --git a/server/service/src/invoice_line/inbound_shipment_line/update/generate.rs b/server/service/src/invoice_line/inbound_shipment_line/update/generate.rs
 deleted file mode 100644
-index cbf68b728..000000000
+index 95c8e27a2..000000000
 --- a/server/service/src/invoice_line/inbound_shipment_line/update/generate.rs
 +++ /dev/null
-@@ -1,148 +0,0 @@
+@@ -1,147 +0,0 @@
 -use crate::{
 -    invoice::common::{
 -        calculate_foreign_currency_total, calculate_total_after_tax,
@@ -2099,7 +2098,6 @@ index cbf68b728..000000000
 -        generate::convert_invoice_line_to_single_pack, generate_batch,
 -    },
 -    store_preference::get_store_preferences,
--    u32_to_i32,
 -};
 -use repository::{
 -    InvoiceLine, InvoiceLineRow, InvoiceRow, InvoiceStatus, ItemRow, RepositoryError, StockLineRow,
@@ -2200,7 +2198,7 @@ index cbf68b728..000000000
 -) -> Result<InvoiceLineRow, RepositoryError> {
 -    let mut update_line = current_line;
 -
--    update_line.pack_size = pack_size.map(u32_to_i32).unwrap_or(update_line.pack_size);
+-    update_line.pack_size = pack_size.unwrap_or(update_line.pack_size);
 -    update_line.batch = batch.or(update_line.batch);
 -    update_line.location_id = location.map(|l| l.value).unwrap_or(update_line.location_id);
 -    update_line.expiry_date = expiry_date.or(update_line.expiry_date);
@@ -2240,10 +2238,10 @@ index cbf68b728..000000000
 -}
 diff --git a/server/service/src/invoice_line/inbound_shipment_line/update/mod.rs b/server/service/src/invoice_line/inbound_shipment_line/update/mod.rs
 deleted file mode 100644
-index 990b78f8c..000000000
+index 62db6cc2c..000000000
 --- a/server/service/src/invoice_line/inbound_shipment_line/update/mod.rs
 +++ /dev/null
-@@ -1,353 +0,0 @@
+@@ -1,355 +0,0 @@
 -use crate::{
 -    activity_log::activity_log_entry,
 -    invoice_line::{query::get_invoice_line, ShipmentTaxUpdate},
@@ -2267,7 +2265,7 @@ index 990b78f8c..000000000
 -    pub id: String,
 -    pub item_id: Option<String>,
 -    pub location: Option<NullableUpdate<String>>,
--    pub pack_size: Option<u32>,
+-    pub pack_size: Option<f64>,
 -    pub batch: Option<String>,
 -    pub cost_price_per_pack: Option<f64>,
 -    pub sell_price_per_pack: Option<f64>,
@@ -2437,7 +2435,7 @@ index 990b78f8c..000000000
 -                inline_init(|r: &mut UpdateInboundShipmentLine| {
 -                    r.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
 -                    r.item_id = Some("invalid".to_string());
--                    r.pack_size = Some(1);
+-                    r.pack_size = Some(1.0);
 -                    r.number_of_packs = Some(1.0);
 -                }),
 -            ),
@@ -2451,7 +2449,7 @@ index 990b78f8c..000000000
 -                inline_init(|r: &mut UpdateInboundShipmentLine| {
 -                    r.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
 -                    r.item_id = Some(mock_item_a().id.clone());
--                    r.pack_size = Some(0);
+-                    r.pack_size = Some(0.0);
 -                    r.number_of_packs = Some(1.0);
 -                }),
 -            ),
@@ -2465,7 +2463,7 @@ index 990b78f8c..000000000
 -                inline_init(|r: &mut UpdateInboundShipmentLine| {
 -                    r.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
 -                    r.item_id = Some(mock_item_a().id.clone());
--                    r.pack_size = Some(1);
+-                    r.pack_size = Some(1.0);
 -                    r.number_of_packs = Some(-1.0);
 -                }),
 -            ),
@@ -2479,7 +2477,7 @@ index 990b78f8c..000000000
 -                inline_init(|r: &mut UpdateInboundShipmentLine| {
 -                    r.id = mock_inbound_shipment_b_invoice_lines()[0].id.clone();
 -                    r.item_id = Some(mock_item_a().id.clone());
--                    r.pack_size = Some(1);
+-                    r.pack_size = Some(1.0);
 -                    r.number_of_packs = Some(1.0);
 -                }),
 -            ),
@@ -2493,7 +2491,7 @@ index 990b78f8c..000000000
 -                inline_init(|r: &mut UpdateInboundShipmentLine| {
 -                    r.id = mock_inbound_shipment_a_invoice_lines()[0].id.clone();
 -                    r.item_id = Some(mock_item_a().id.clone());
--                    r.pack_size = Some(1);
+-                    r.pack_size = Some(1.0);
 -                    r.number_of_packs = Some(1.0);
 -                }),
 -            ),
@@ -2508,7 +2506,7 @@ index 990b78f8c..000000000
 -                inline_init(|r: &mut UpdateInboundShipmentLine| {
 -                    r.id = mock_inbound_shipment_a_invoice_lines()[0].id.clone();
 -                    r.item_id = Some(mock_item_a().id.clone());
--                    r.pack_size = Some(1);
+-                    r.pack_size = Some(1.0);
 -                    r.number_of_packs = Some(1.0);
 -                }),
 -            ),
@@ -2536,7 +2534,7 @@ index 990b78f8c..000000000
 -                inline_init(|r: &mut UpdateInboundShipmentLine| {
 -                    r.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
 -                    r.item_id = Some(mock_item_a().id.clone());
--                    r.pack_size = Some(2);
+-                    r.pack_size = Some(2.0);
 -                    r.number_of_packs = Some(3.0);
 -                }),
 -            )
@@ -2544,6 +2542,7 @@ index 990b78f8c..000000000
 -
 -        let inbound_line_update = InvoiceLineRowRepository::new(&connection)
 -            .find_one_by_id(&mock_inbound_shipment_c_invoice_lines()[0].id.clone())
+-            .unwrap()
 -            .unwrap();
 -
 -        assert_eq!(
@@ -2551,7 +2550,7 @@ index 990b78f8c..000000000
 -            inline_edit(&inbound_line_update, |mut u| {
 -                u.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
 -                u.item_link_id = mock_item_a().id.clone();
--                u.pack_size = 2;
+-                u.pack_size = 2.0;
 -                u.number_of_packs = 3.0;
 -                u
 -            })
@@ -2572,7 +2571,7 @@ index 990b78f8c..000000000
 -                &context,
 -                inline_init(|r: &mut UpdateInboundShipmentLine| {
 -                    r.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
--                    r.pack_size = Some(20);
+-                    r.pack_size = Some(20.0);
 -                    r.number_of_packs = Some(20.0);
 -                    r.sell_price_per_pack = Some(100.0);
 -                    r.cost_price_per_pack = Some(60.0);
@@ -2582,13 +2581,14 @@ index 990b78f8c..000000000
 -
 -        let inbound_line = InvoiceLineRowRepository::new(&connection)
 -            .find_one_by_id(&mock_inbound_shipment_c_invoice_lines()[0].id.clone())
+-            .unwrap()
 -            .unwrap();
 -
 -        assert_eq!(
 -            inbound_line,
 -            inline_edit(&inbound_line, |mut u| {
 -                u.id = mock_inbound_shipment_c_invoice_lines()[0].id.clone();
--                u.pack_size = 1;
+-                u.pack_size = 1.0;
 -                u.number_of_packs = 400.0;
 -                u.sell_price_per_pack = 5.0;
 -                u.cost_price_per_pack = 3.0;
@@ -2599,7 +2599,7 @@ index 990b78f8c..000000000
 -}
 diff --git a/server/service/src/invoice_line/inbound_shipment_line/update/validate.rs b/server/service/src/invoice_line/inbound_shipment_line/update/validate.rs
 deleted file mode 100644
-index d7d2124a4..000000000
+index 0ff6fd663..000000000
 --- a/server/service/src/invoice_line/inbound_shipment_line/update/validate.rs
 +++ /dev/null
 @@ -1,77 +0,0 @@
@@ -2608,7 +2608,7 @@ index d7d2124a4..000000000
 -    invoice_line::{
 -        check_batch, check_location_exists, check_pack_size,
 -        validate::{
--            check_item_exists, check_line_belongs_to_invoice, check_line_exists_option,
+-            check_item_exists, check_line_belongs_to_invoice, check_line_exists,
 -            check_number_of_packs,
 -        },
 -    },
@@ -2624,7 +2624,7 @@ index d7d2124a4..000000000
 -) -> Result<(InvoiceLine, Option<ItemRow>, InvoiceRow), UpdateInboundShipmentLineError> {
 -    use UpdateInboundShipmentLineError::*;
 -
--    let line = check_line_exists_option(connection, &input.id)?.ok_or(LineDoesNotExist)?;
+-    let line = check_line_exists(connection, &input.id)?.ok_or(LineDoesNotExist)?;
 -    let line_row = &line.invoice_line_row;
 -
 -    if !check_pack_size(input.pack_size) {
@@ -2681,7 +2681,7 @@ index d7d2124a4..000000000
 -    }
 -}
 diff --git a/server/service/src/invoice_line/inbound_shipment_service_line/delete/mod.rs b/server/service/src/invoice_line/inbound_shipment_service_line/delete/mod.rs
-index de6bce7bb..9d9af3727 100644
+index e8f4df273..e36ed02ea 100644
 --- a/server/service/src/invoice_line/inbound_shipment_service_line/delete/mod.rs
 +++ b/server/service/src/invoice_line/inbound_shipment_service_line/delete/mod.rs
 @@ -1,5 +1,5 @@
@@ -2756,7 +2756,7 @@ index de6bce7bb..9d9af3727 100644
                  }),
              )
 diff --git a/server/service/src/invoice_line/inbound_shipment_service_line/delete/validate.rs b/server/service/src/invoice_line/inbound_shipment_service_line/delete/validate.rs
-index 75bce3411..1f994d3d4 100644
+index bf743b319..a7c291387 100644
 --- a/server/service/src/invoice_line/inbound_shipment_service_line/delete/validate.rs
 +++ b/server/service/src/invoice_line/inbound_shipment_service_line/delete/validate.rs
 @@ -1,8 +1,8 @@
@@ -2764,7 +2764,7 @@ index 75bce3411..1f994d3d4 100644
      invoice::{check_invoice_exists, check_invoice_is_editable, check_invoice_type, check_store},
      invoice_line::{
 +        stock_in_line::DeleteStockInLine,
-         validate::{check_line_belongs_to_invoice, check_line_row_exists_option},
+         validate::{check_line_belongs_to_invoice, check_line_row_exists},
 -        DeleteInboundShipmentLine,
      },
  };
@@ -2865,7 +2865,7 @@ index ccd96df9b..16ec42732 100644
          delete_inbound_shipment_service_line(ctx, input)
      }
 diff --git a/server/service/src/invoice_line/outbound_shipment_unallocated_line/allocate/generate.rs b/server/service/src/invoice_line/outbound_shipment_unallocated_line/allocate/generate.rs
-index f98d608f2..b8f0dcf48 100644
+index f2fd9360f..7010ed8a1 100644
 --- a/server/service/src/invoice_line/outbound_shipment_unallocated_line/allocate/generate.rs
 +++ b/server/service/src/invoice_line/outbound_shipment_unallocated_line/allocate/generate.rs
 @@ -151,13 +151,20 @@ fn generate_new_line(
@@ -2891,7 +2891,7 @@ index f98d608f2..b8f0dcf48 100644
  }
  
 diff --git a/server/service/src/invoice_line/stock_in_line/delete/validate.rs b/server/service/src/invoice_line/stock_in_line/delete/validate.rs
-index 257795a80..8b5b5fcdf 100644
+index 9be61e6a9..29233faca 100644
 --- a/server/service/src/invoice_line/stock_in_line/delete/validate.rs
 +++ b/server/service/src/invoice_line/stock_in_line/delete/validate.rs
 @@ -1,7 +1,7 @@
@@ -2902,10 +2902,10 @@ index 257795a80..8b5b5fcdf 100644
 +        stock_in_line::check_batch,
          validate::{
              check_line_belongs_to_invoice, check_line_not_associated_with_stocktake,
-             check_line_row_exists_option,
+             check_line_row_exists,
 diff --git a/server/service/src/invoice_line/stock_in_line/generate.rs b/server/service/src/invoice_line/stock_in_line/generate.rs
 new file mode 100644
-index 000000000..dd58b8579
+index 000000000..ff7ed0418
 --- /dev/null
 +++ b/server/service/src/invoice_line/stock_in_line/generate.rs
 @@ -0,0 +1,130 @@
@@ -2921,7 +2921,7 @@ index 000000000..dd58b8579
 +            * stock_line.pack_size as f64,
 +        cost_price_per_pack: stock_line.cost_price_per_pack / stock_line.pack_size as f64,
 +        sell_price_per_pack: stock_line.sell_price_per_pack / stock_line.pack_size as f64,
-+        pack_size: 1,
++        pack_size: 1.0,
 +        ..stock_line
 +    }
 +}
@@ -2931,7 +2931,7 @@ index 000000000..dd58b8579
 +        number_of_packs: invoice_line.number_of_packs * invoice_line.pack_size as f64,
 +        sell_price_per_pack: invoice_line.sell_price_per_pack / invoice_line.pack_size as f64,
 +        cost_price_per_pack: invoice_line.cost_price_per_pack / invoice_line.pack_size as f64,
-+        pack_size: 1,
++        pack_size: 1.0,
 +        ..invoice_line
 +    }
 +}
@@ -2979,7 +2979,7 @@ index 000000000..dd58b8579
 +    };
 +
 +    let existing_stock_line =
-+        StockLineRowRepository::new(connection).find_one_by_id_option(&stock_line_id)?;
++        StockLineRowRepository::new(connection).find_one_by_id(&stock_line_id)?;
 +
 +    // Update existing stock level values if stock line already exists
 +    let StockLevels {
@@ -3040,7 +3040,7 @@ index 000000000..dd58b8579
 +    }
 +}
 diff --git a/server/service/src/invoice_line/stock_in_line/insert/generate.rs b/server/service/src/invoice_line/stock_in_line/insert/generate.rs
-index 28cfdea43..41139bb03 100644
+index 744dec30f..504270676 100644
 --- a/server/service/src/invoice_line/stock_in_line/insert/generate.rs
 +++ b/server/service/src/invoice_line/stock_in_line/insert/generate.rs
 @@ -1,9 +1,9 @@
@@ -3055,8 +3055,8 @@ index 28cfdea43..41139bb03 100644
 +        StockInType, StockLineInput,
      },
      store_preference::get_store_preferences,
-     u32_to_i32,
-@@ -40,24 +40,29 @@ pub fn generate(
+ };
+@@ -39,24 +39,29 @@ pub fn generate(
  
      let barcode_option = generate_barcode(&input, connection)?;
  
@@ -3094,7 +3094,7 @@ index 28cfdea43..41139bb03 100644
          };
  
          Some(new_batch)
-@@ -68,7 +73,7 @@ pub fn generate(
+@@ -67,7 +72,7 @@ pub fn generate(
      Ok(GenerateResult {
          invoice: generate_invoice_user_id_update(user_id, existing_invoice_row),
          invoice_line: new_line,
@@ -3103,7 +3103,7 @@ index 28cfdea43..41139bb03 100644
          barcode: barcode_option,
      })
  }
-@@ -129,7 +134,9 @@ fn generate_line(
+@@ -128,7 +133,9 @@ fn generate_line(
  
  fn should_upsert_batch(stock_in_type: &StockInType, existing_invoice_row: &InvoiceRow) -> bool {
      match stock_in_type {
@@ -3115,7 +3115,7 @@ index 28cfdea43..41139bb03 100644
      }
  }
 diff --git a/server/service/src/invoice_line/stock_in_line/insert/mod.rs b/server/service/src/invoice_line/stock_in_line/insert/mod.rs
-index fb346285a..c2c9ece0a 100644
+index ef1c10d63..0cc656802 100644
 --- a/server/service/src/invoice_line/stock_in_line/insert/mod.rs
 +++ b/server/service/src/invoice_line/stock_in_line/insert/mod.rs
 @@ -34,6 +34,7 @@ pub struct InsertStockInLine {
@@ -3127,7 +3127,7 @@ index fb346285a..c2c9ece0a 100644
      pub barcode: Option<String>,
      pub stock_on_hold: bool,
 diff --git a/server/service/src/invoice_line/stock_in_line/insert/validate.rs b/server/service/src/invoice_line/stock_in_line/insert/validate.rs
-index 04540a9d8..b660c3505 100644
+index e256781c5..fe56b8925 100644
 --- a/server/service/src/invoice_line/stock_in_line/insert/validate.rs
 +++ b/server/service/src/invoice_line/stock_in_line/insert/validate.rs
 @@ -1,7 +1,7 @@
@@ -3136,7 +3136,7 @@ index 04540a9d8..b660c3505 100644
      invoice_line::{
 -        check_location_exists, check_pack_size,
 +        stock_in_line::{check_location_exists, check_pack_size},
-         validate::{check_item_exists, check_line_does_not_exist},
+         validate::{check_item_exists, check_line_exists},
      },
  };
 diff --git a/server/service/src/invoice_line/stock_in_line/mod.rs b/server/service/src/invoice_line/stock_in_line/mod.rs
@@ -3232,7 +3232,7 @@ index ef2677fb2..4ec970bf5 100644
 -    }
 -}
 diff --git a/server/service/src/invoice_line/stock_in_line/update/generate.rs b/server/service/src/invoice_line/stock_in_line/update/generate.rs
-index 1ae302ed4..c45df6ea1 100644
+index b6095e4e6..99895534b 100644
 --- a/server/service/src/invoice_line/stock_in_line/update/generate.rs
 +++ b/server/service/src/invoice_line/stock_in_line/update/generate.rs
 @@ -3,9 +3,8 @@ use crate::{
@@ -3246,8 +3246,8 @@ index 1ae302ed4..c45df6ea1 100644
 +        convert_invoice_line_to_single_pack, generate_batch, StockLineInput,
      },
      store_preference::get_store_preferences,
-     u32_to_i32,
-@@ -52,18 +51,25 @@ pub fn generate(
+ };
+@@ -51,18 +50,25 @@ pub fn generate(
      };
  
      let upsert_batch_option = if existing_invoice_row.status != InvoiceStatus::New {
@@ -3278,7 +3278,7 @@ index 1ae302ed4..c45df6ea1 100644
          Some(new_batch)
      } else {
 diff --git a/server/service/src/invoice_line/stock_in_line/update/validate.rs b/server/service/src/invoice_line/stock_in_line/update/validate.rs
-index e6780c283..9d663cf09 100644
+index 88a1715c4..3927a40f2 100644
 --- a/server/service/src/invoice_line/stock_in_line/update/validate.rs
 +++ b/server/service/src/invoice_line/stock_in_line/update/validate.rs
 @@ -1,7 +1,7 @@
@@ -3287,7 +3287,7 @@ index e6780c283..9d663cf09 100644
      invoice_line::{
 -        check_batch, check_location_exists, check_pack_size,
 +        stock_in_line::{check_batch, check_location_exists, check_pack_size},
-         validate::{check_item_exists, check_line_belongs_to_invoice, check_line_exists_option},
+         validate::{check_item_exists, check_line_belongs_to_invoice, check_line_exists},
      },
  };
 diff --git a/server/service/src/invoice_line/inbound_shipment_line/validate.rs b/server/service/src/invoice_line/stock_in_line/validate.rs
@@ -3440,7 +3440,7 @@ index b5efb6150..9e430ac62 100644
 +    }
 +}
 diff --git a/server/service/src/invoice_line/stock_out_line/insert/mod.rs b/server/service/src/invoice_line/stock_out_line/insert/mod.rs
-index 5c1d79737..cf29f2330 100644
+index 51febda06..de6c2772e 100644
 --- a/server/service/src/invoice_line/stock_out_line/insert/mod.rs
 +++ b/server/service/src/invoice_line/stock_out_line/insert/mod.rs
 @@ -1,4 +1,5 @@
@@ -3463,7 +3463,7 @@ index 5c1d79737..cf29f2330 100644
      pub note: Option<String>,
 +    pub location_id: Option<String>,
 +    pub batch: Option<String>,
-+    pub pack_size: Option<i32>,
++    pub pack_size: Option<f64>,
 +    pub expiry_date: Option<NaiveDate>,
 +    pub cost_price_per_pack: Option<f64>,
 +    pub sell_price_per_pack: Option<f64>,
@@ -3559,7 +3559,7 @@ index 5c1d79737..cf29f2330 100644
                      r.invoice_id = mock_outbound_shipment_a_invoice_lines()[0]
                          .invoice_id
                          .clone();
-@@ -298,7 +304,7 @@ mod test {
+@@ -300,7 +306,7 @@ mod test {
                  &context,
                  inline_init(|r: &mut InsertStockOutLine| {
                      r.id = "new outbound line id".to_string();
@@ -3568,7 +3568,7 @@ index 5c1d79737..cf29f2330 100644
                      r.invoice_id = mock_outbound_shipment_c_invoice_lines()[0]
                          .invoice_id
                          .clone();
-@@ -349,7 +355,7 @@ mod test {
+@@ -353,7 +359,7 @@ mod test {
                  &context,
                  inline_init(|r: &mut InsertStockOutLine| {
                      r.id = "new allocated invoice line".to_string();
@@ -3577,7 +3577,7 @@ index 5c1d79737..cf29f2330 100644
                      r.invoice_id = mock_outbound_shipment_c_invoice_lines()[0]
                          .invoice_id
                          .clone();
-@@ -389,7 +395,7 @@ mod test {
+@@ -395,7 +401,7 @@ mod test {
                  &context,
                  inline_init(|r: &mut InsertStockOutLine| {
                      r.id = "new picked invoice line".to_string();
@@ -3586,7 +3586,7 @@ index 5c1d79737..cf29f2330 100644
                      r.invoice_id = mock_outbound_shipment_c_invoice_lines()[0]
                          .invoice_id
                          .clone();
-@@ -428,7 +434,7 @@ mod test {
+@@ -436,7 +442,7 @@ mod test {
                  &context,
                  inline_init(|r: &mut InsertStockOutLine| {
                      r.id = "new prescription line id".to_string();
@@ -3596,7 +3596,7 @@ index 5c1d79737..cf29f2330 100644
                      r.stock_line_id = mock_stock_line_a().id.clone();
                      r.number_of_packs = 1.0;
 diff --git a/server/service/src/invoice_line/stock_out_line/insert/validate.rs b/server/service/src/invoice_line/stock_out_line/insert/validate.rs
-index c7227142b..7a2e3faa8 100644
+index 1d7aef168..feb9bb162 100644
 --- a/server/service/src/invoice_line/stock_out_line/insert/validate.rs
 +++ b/server/service/src/invoice_line/stock_out_line/insert/validate.rs
 @@ -49,12 +49,8 @@ pub fn validate(
@@ -3642,7 +3642,7 @@ index d82f6f08a..937a5e1ad 100644
      }
  }
 diff --git a/server/service/src/stocktake/update.rs b/server/service/src/stocktake/update.rs
-index e71fcf67c..56c7145e5 100644
+index eb10aa3ec..e5556a72e 100644
 --- a/server/service/src/stocktake/update.rs
 +++ b/server/service/src/stocktake/update.rs
 @@ -2,9 +2,8 @@ use chrono::{NaiveDate, Utc};
@@ -3657,14 +3657,13 @@ index e71fcf67c..56c7145e5 100644
      RepositoryError, StockLine, StockLineFilter, StockLineRepository, StockLineRow,
      StockLineRowRepository, Stocktake, StocktakeLine, StocktakeLineFilter, StocktakeLineRepository,
      StocktakeLineRow, StocktakeLineRowRepository, StocktakeRow, StocktakeRowRepository,
-@@ -13,8 +12,22 @@ use repository::{
+@@ -13,8 +12,21 @@ use repository::{
  use util::{constants::INVENTORY_ADJUSTMENT_NAME_CODE, inline_edit, uuid::uuid};
  
  use crate::{
 -    activity_log::activity_log_entry, number::next_number, service_provider::ServiceContext,
 -    stocktake::query::get_stocktake, validate::check_store_id_matches,
 +    activity_log::activity_log_entry,
-+    i32_to_u32,
 +    invoice::inventory_adjustment::UpdateInventoryAdjustmentReason,
 +    invoice_line::{
 +        stock_in_line::{
@@ -3682,7 +3681,7 @@ index e71fcf67c..56c7145e5 100644
  };
  
  use super::validate::{check_stocktake_exist, check_stocktake_not_finalised};
-@@ -48,6 +61,14 @@ pub enum UpdateStocktakeError {
+@@ -48,6 +60,14 @@ pub enum UpdateStocktakeError {
      StocktakeDoesNotExist,
      CannotEditFinalised,
      StocktakeIsLocked,
@@ -3697,7 +3696,7 @@ index e71fcf67c..56c7145e5 100644
      /// Stocktakes doesn't contain any lines
      NoLines,
      /// Holds list of affected stock lines
-@@ -179,13 +200,15 @@ pub fn check_stocktake_is_not_locked(input: &UpdateStocktake, existing: &Stockta
+@@ -179,13 +199,15 @@ pub fn check_stocktake_is_not_locked(input: &UpdateStocktake, existing: &Stockta
  struct StocktakeGenerateJob {
      stocktake: StocktakeRow,
      // list of stocktake lines to be updated, e.g. to link newly created stock_lines during
@@ -3715,7 +3714,7 @@ index e71fcf67c..56c7145e5 100644
  
      // list of stock_line upserts
      stock_lines: Vec<StockLineRow>,
-@@ -194,16 +217,32 @@ struct StocktakeGenerateJob {
+@@ -194,16 +216,32 @@ struct StocktakeGenerateJob {
      location_movements: Option<Vec<LocationMovementRow>>,
  }
  
@@ -3751,7 +3750,7 @@ index e71fcf67c..56c7145e5 100644
      connection: &StorageConnection,
      store_id: &str,
      inventory_addition_id: &str,
-@@ -211,235 +250,186 @@ fn generate_stock_line_update(
+@@ -211,235 +249,186 @@ fn generate_stock_line_update(
      stocktake_line: &StocktakeLine,
      stock_line: &StockLineRow,
  ) -> Result<StockLineJob, UpdateStocktakeError> {
@@ -3903,7 +3902,7 @@ index e71fcf67c..56c7145e5 100644
 -            return_reason_id: None,
 -            foreign_currency_price_before_tax: None,
 +            location: row.location_id.map(|id| NullableUpdate { value: Some(id) }),
-+            pack_size: i32_to_u32(pack_size),
++            pack_size,
 +            batch: row.batch,
 +            cost_price_per_pack,
 +            sell_price_per_pack,
@@ -3968,7 +3967,7 @@ index e71fcf67c..56c7145e5 100644
  ) -> Result<StockLineJob, UpdateStocktakeError> {
 -    let counted_number_of_packs = stocktake_line.line.counted_number_of_packs.unwrap_or(0.0);
 -    let row = stocktake_line.line;
--    let pack_size = row.pack_size.unwrap_or(0);
+-    let pack_size = row.pack_size.unwrap_or(0.0);
 -    let cost_price_per_pack = row.cost_price_per_pack.unwrap_or(0.0);
 -    let sell_price_per_pack = row.sell_price_per_pack.unwrap_or(0.0);
 +    let row = stocktake_line.line.to_owned();
@@ -4021,8 +4020,7 @@ index e71fcf67c..56c7145e5 100644
 -        store_id: store_id.to_string(),
 -        location_id: row.location_id.clone(),
 -        batch: row.batch.clone(),
--        pack_size,
-+    let pack_size = row.pack_size.unwrap_or(0);
++    let pack_size = row.pack_size.unwrap_or(0.0);
 +    let cost_price_per_pack = row.cost_price_per_pack.unwrap_or(0.0);
 +    let sell_price_per_pack = row.sell_price_per_pack.unwrap_or(0.0);
 +    let invoice_line_id = uuid();
@@ -4041,7 +4039,7 @@ index e71fcf67c..56c7145e5 100644
 +            .location_id
 +            .clone()
 +            .map(|id| NullableUpdate { value: Some(id) }),
-+        pack_size: i32_to_u32(pack_size),
+         pack_size,
 +        batch: row.batch,
          cost_price_per_pack,
          sell_price_per_pack,
@@ -4125,7 +4123,7 @@ index e71fcf67c..56c7145e5 100644
      })
  }
  
-@@ -565,21 +555,22 @@ fn generate(
+@@ -565,21 +554,22 @@ fn generate(
      let inventory_reduction_id = uuid();
  
      // finalise the stocktake
@@ -4153,7 +4151,7 @@ index e71fcf67c..56c7145e5 100644
                  connection,
                  store_id,
                  &inventory_addition_id,
-@@ -589,20 +580,22 @@ fn generate(
+@@ -589,20 +579,22 @@ fn generate(
              )?
          } else {
              // create new stock line
@@ -4174,10 +4172,10 @@ index e71fcf67c..56c7145e5 100644
 +        match stock_in_out_or_update {
 +            Some(StockChange::StockIn(line)) => {
 +                inventory_addition_lines.push(line);
-             }
++            }
 +            Some(StockChange::StockOut(line)) => {
 +                inventory_reduction_lines.push(line);
-+            }
+             }
 +            Some(StockChange::StockUpdate(stock_line)) => {
 +                stock_lines.push(stock_line);
 +            }
@@ -4188,7 +4186,7 @@ index e71fcf67c..56c7145e5 100644
          }
          if let Some(stocktake_line) = stocktake_line {
              stocktake_line_updates.push(stocktake_line);
-@@ -629,7 +622,7 @@ fn generate(
+@@ -629,7 +621,7 @@ fn generate(
          user_id: Some(user_id.to_string()),
          name_link_id: inventory_adjustment_name.id,
          store_id: store_id.to_string(),
@@ -4197,7 +4195,7 @@ index e71fcf67c..56c7145e5 100644
          verified_datetime: Some(now),
          // Default
          currency_id: Some(currency.currency_row.id),
-@@ -686,7 +679,9 @@ fn generate(
+@@ -686,7 +678,9 @@ fn generate(
          stocktake_lines: stocktake_line_updates,
          inventory_addition,
          inventory_reduction,
@@ -4208,7 +4206,7 @@ index e71fcf67c..56c7145e5 100644
          stock_lines,
          location_movements: Some(location_movements),
          stocktake_lines_to_trim: unallocated_lines_to_trim(connection, &stocktake, &ctx.store_id)?,
-@@ -706,30 +701,65 @@ pub fn update_stocktake(
+@@ -706,30 +700,65 @@ pub fn update_stocktake(
              let result = generate(&ctx, input, existing, stocktake_lines, status_changed)?;
  
              // write data to the DB
@@ -4287,7 +4285,7 @@ index e71fcf67c..56c7145e5 100644
              StocktakeRowRepository::new(connection).upsert_one(&result.stocktake)?;
              // trim uncounted stocktake lines
              if let Some(lines_to_trim) = result.stocktake_lines_to_trim {
-@@ -790,7 +820,7 @@ mod test {
+@@ -790,7 +819,7 @@ mod test {
          StocktakeLineRepository, StocktakeLineRow, StocktakeLineRowRepository, StocktakeRepository,
          StocktakeRow, StocktakeStatus,
      };
@@ -4296,7 +4294,7 @@ index e71fcf67c..56c7145e5 100644
  
      use crate::{
          service_provider::ServiceProvider,
-@@ -1142,7 +1172,10 @@ mod test {
+@@ -1143,7 +1172,10 @@ mod test {
              stocktake_line.sell_price_per_pack.unwrap()
          );
          assert_eq!(stock_line.note, stocktake_line.note);
