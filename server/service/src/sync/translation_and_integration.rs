@@ -389,17 +389,19 @@ mod test {
 
         // cargo test --package service --lib data/temp.txt -- sync::translation_and_integration::test::test_nested_transaction_and_errors_speed --exact --nocapture
         // generate                        PT0S    PT0S
-        // insert transaction              PT0.094401S     PT0.094401S
-        // done insert transaction         PT4.992747S     PT4.898346S
-        // insert nested transaction       PT4.992756S     PT0.000009S
-        // done insert nested transaction  PT71.597694S    PT66.604938S
+        // insert transaction              PT0.096129S     PT0.096129S
+        // done insert transaction         PT3.867347S     PT3.771218S
+        // insert nested transaction       PT3.867351S     PT0.000004S
+        // done insert nested transaction  PT16.186282S    PT12.318931S
 
         // POSTGRES
 
         // cargo test --features postgres --package service --lib data/temp.txt -- sync::translation_and_integration::test::test_nested_transaction_and_errors_speed --exact --nocapture
         // generate                        PT0S    PT0S
-        // insert nested transaction       PT0.129909S     PT0.129909S
-        // done insert nested transaction  PT236.547470S   PT236.417561S
+        // insert no transaction           PT0.132347S     PT0.132347S
+        // done insert no transaction      PT22.656264S    PT22.523917S
+        // insert nested transaction       PT22.656267S    PT0.000003S
+        // done insert nested transaction  PT54.988093S    PT32.331826S
 
         let unit_row = UnitRow {
             id: uuid(),
@@ -425,18 +427,22 @@ mod test {
             },
         )
         .await;
+        let ERROR_RATE = 0.05;
+        let NUMBER_OF_RECORDS = 100000;
+        let NUMBER_OF_ERRORS = (NUMBER_OF_RECORDS as f64 * ERROR_RATE) as i32;
+        let ERROR_EVERY_X_RECORD = NUMBER_OF_RECORDS / NUMBER_OF_ERRORS;
 
         bench_point("generate");
 
-        let records: Vec<ItemRow> = (0..100000)
+        let records: Vec<ItemRow> = (0..NUMBER_OF_RECORDS)
             .into_iter()
             .map(|num| ItemRow {
                 id: uuid(),
                 // Error in half the records
-                unit_id: if num % 2 == 0 {
-                    Some(unit_row.id.clone())
-                } else {
+                unit_id: if num % (ERROR_EVERY_X_RECORD) == 0 {
                     Some("does not exist".to_string())
+                } else {
+                    Some(unit_row.id.clone())
                 },
                 ..Default::default()
             })
@@ -459,7 +465,7 @@ mod test {
                 })
                 .unwrap();
 
-            assert_eq!(error_count, 50000);
+            assert_eq!(error_count, NUMBER_OF_ERRORS);
             bench_point("done insert transaction");
         }
 
@@ -474,7 +480,7 @@ mod test {
                 }
             }
 
-            assert_eq!(error_count, 50000);
+            assert_eq!(error_count, NUMBER_OF_ERRORS);
             bench_point("done insert no transaction");
         }
 
@@ -502,7 +508,7 @@ mod test {
             })
             .unwrap();
 
-        assert_eq!(error_count, 50000);
+        assert_eq!(error_count, NUMBER_OF_ERRORS);
 
         bench_point("done insert nested transaction");
         bench_results();
