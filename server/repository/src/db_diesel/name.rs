@@ -12,7 +12,7 @@ use crate::{
     },
     name_oms_fields_alias,
     repository_error::RepositoryError,
-    EqualFilter, NameLinkRow, NameOmsFields, NameOmsFieldsRow, NameType, Pagination, Sort,
+    EqualFilter, NameLinkRow, NameOmsFields, NameOmsFieldsRow, NameRowType, Pagination, Sort,
     StringFilter,
 };
 
@@ -33,6 +33,14 @@ pub struct Name {
 }
 
 #[derive(Clone, Default, PartialEq, Debug)]
+pub enum NameType {
+    Facility,
+    Invad,
+    Repack,
+    #[default]
+    Store,
+}
+#[derive(Clone, Default, PartialEq, Debug)]
 pub struct NameFilter {
     pub id: Option<EqualFilter<String>>,
     pub name: Option<StringFilter>,
@@ -40,7 +48,6 @@ pub struct NameFilter {
     pub is_customer: Option<bool>,
     pub is_supplier: Option<bool>,
     pub is_donor: Option<bool>,
-    pub is_patient: Option<bool>,
     pub is_store: Option<bool>,
     pub store_code: Option<StringFilter>,
     pub is_visible: Option<bool>,
@@ -56,8 +63,8 @@ pub struct NameFilter {
     pub code_or_name: Option<StringFilter>,
 }
 
-impl EqualFilter<NameType> {
-    pub fn equal_to_name_type(value: &NameType) -> Self {
+impl EqualFilter<NameRowType> {
+    pub fn equal_to_name_type(value: &NameRowType) -> Self {
         inline_init(|r: &mut Self| r.equal_to = Some(value.to_owned()))
     }
 }
@@ -178,6 +185,9 @@ impl<'a> NameRepository<'a> {
             .inner_join(name_oms_fields_alias)
             .into_boxed();
 
+        // Apply not patient filter
+        query = query.filter(name_dsl::type_.ne(NameRowType::Patient));
+
         if let Some(f) = filter {
             let NameFilter {
                 id,
@@ -196,7 +206,6 @@ impl<'a> NameRepository<'a> {
                 address2,
                 country,
                 email,
-                is_patient,
                 code_or_name,
             } = f;
 
@@ -211,6 +220,8 @@ impl<'a> NameRepository<'a> {
 
             apply_string_filter!(query, name, name_dsl::name_);
             apply_string_filter!(query, store_code, store_dsl::code);
+
+            let r#type = r#type.map(|r| r.convert_filter::<NameRowType>());
             apply_equal_filter!(query, r#type, name_dsl::type_);
 
             apply_string_filter!(query, phone, name_dsl::phone);
@@ -228,12 +239,6 @@ impl<'a> NameRepository<'a> {
 
             query = match is_donor {
                 Some(bool) => query.filter(name_dsl::is_donor.eq(bool)),
-                None => query,
-            };
-
-            query = match is_patient {
-                Some(true) => query.filter(name_dsl::type_.eq(NameType::Patient)),
-                Some(false) => query.filter(name_dsl::type_.ne(NameType::Patient)),
                 None => query,
             };
 
@@ -280,6 +285,10 @@ impl Name {
             .as_ref()
             .map(|custom_data_string| serde_json::from_str(custom_data_string))
             .transpose()
+    }
+
+    fn r#type(&self) -> NameType {
+        self.name_row.r#type
     }
 }
 
@@ -352,11 +361,6 @@ impl NameFilter {
         self
     }
 
-    pub fn is_patient(mut self, value: bool) -> Self {
-        self.is_patient = Some(value);
-        self
-    }
-
     pub fn r#type(mut self, filter: EqualFilter<NameType>) -> Self {
         self.r#type = Some(filter);
         self
@@ -384,7 +388,7 @@ impl Name {
     }
 
     pub fn is_patient(&self) -> bool {
-        self.name_row.r#type == NameType::Patient
+        self.name_row.r#type == NameRowType::Patient
     }
 
     pub fn is_visible(&self) -> bool {
@@ -411,6 +415,19 @@ impl NameType {
 
     pub fn not_equal_to(&self) -> EqualFilter<Self> {
         inline_init(|r: &mut EqualFilter<Self>| r.not_equal_to = Some(self.clone()))
+    }
+}
+
+impl From<NameType> for NameRowType {
+    fn from(from_value: NameType) -> NameRowType {
+        use NameRowType as to;
+        use NameType as from;
+        match from_value {
+            from::Facility => to::Facility,
+            from::Invad => to::Invad,
+            from::Repack => to::Repack,
+            from::Store => to::Store,
+        }
     }
 }
 

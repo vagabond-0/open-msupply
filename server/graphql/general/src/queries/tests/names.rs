@@ -9,7 +9,7 @@ mod graphql {
             mock_name_a, mock_name_linked_to_store, mock_name_not_linked_to_store,
             mock_store_linked_to_name, MockDataInserts,
         },
-        EqualFilter, Name, NameFilter, NameSort, NameSortField, NameType, PaginationOption,
+        EqualFilter, Name, NameFilter, NameRowType, NameSort, NameSortField, PaginationOption,
         StorageConnectionManager, StringFilter,
     };
     use serde_json::json;
@@ -184,7 +184,6 @@ mod graphql {
                 address2,
                 country,
                 email,
-                is_patient: _,
                 is_donor,
                 code_or_name: _,
             } = filter.unwrap();
@@ -202,7 +201,7 @@ mod graphql {
             assert_eq!(is_system_name, Some(true));
             assert_eq!(
                 r#type,
-                Some(EqualFilter::equal_to_name_type(&NameType::Store))
+                Some(EqualFilter::equal_to_name_type(&NameRowType::Store))
             );
 
             assert_eq!(phone, Some(StringFilter::equal_to("01234")));

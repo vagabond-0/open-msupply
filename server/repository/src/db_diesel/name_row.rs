@@ -26,7 +26,7 @@ table! {
         name_  -> Text,
         code -> Text,
         #[sql_name = "type"]
-        type_ -> crate::db_diesel::name_row::NameTypeMapping,
+        type_ -> crate::db_diesel::name_row::NameRowTypeMapping,
         is_customer -> Bool,
         is_supplier -> Bool,
 
@@ -121,7 +121,7 @@ impl GenderType {
 #[derive(DbEnum, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[DbValueStyle = "SCREAMING_SNAKE_CASE"]
-pub enum NameType {
+pub enum NameRowType {
     Facility,
     Patient,
     Build,
@@ -129,14 +129,13 @@ pub enum NameType {
     Repack,
     #[default]
     Store,
-
     #[serde(other)]
     Others,
 }
 
-impl NameType {
+impl NameRowType {
     pub fn is_facility_or_store(&self) -> bool {
-        *self == NameType::Facility || *self == NameType::Store
+        *self == NameRowType::Facility || *self == NameRowType::Store
     }
 }
 
@@ -149,7 +148,7 @@ pub struct NameRow {
     pub name: String,
     pub code: String,
     #[diesel(column_name = type_)]
-    pub r#type: NameType,
+    pub r#type: NameRowType,
     pub is_customer: bool,
     pub is_supplier: bool,
 
@@ -327,6 +326,22 @@ impl<'a> NameRowRepository<'a> {
             ..Default::default()
         };
         ChangelogRepository::new(self.connection).insert(&row)
+    }
+}
+
+impl NameRowType {
+    pub fn equal_to(&self) -> EqualFilter<Self> {
+        EqualFilter {
+            equal_to: Some(self.clone()),
+            ..Default::default()
+        }
+    }
+
+    pub fn not_equal_to(&self) -> EqualFilter<Self> {
+        EqualFilter {
+            not_equal_to: Some(self.clone()),
+            ..Default::default()
+        }
     }
 }
 

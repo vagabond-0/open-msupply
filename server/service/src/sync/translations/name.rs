@@ -5,7 +5,7 @@ use anyhow::Context;
 use chrono::{NaiveDate, NaiveDateTime};
 use repository::{
     ChangelogRow, ChangelogTableName, GenderType, NameRow, NameRowDelete, NameRowRepository,
-    NameType, StorageConnection, SyncBufferRow,
+    NameRowType, StorageConnection, SyncBufferRow,
 };
 
 use serde::{Deserialize, Serialize};
@@ -32,15 +32,15 @@ pub enum LegacyNameType {
 }
 
 impl LegacyNameType {
-    fn to_name_type(&self) -> NameType {
+    fn to_name_type(&self) -> NameRowType {
         match self {
-            LegacyNameType::Facility => NameType::Facility,
-            LegacyNameType::Patient => NameType::Patient,
-            LegacyNameType::Build => NameType::Build,
-            LegacyNameType::Invad => NameType::Invad,
-            LegacyNameType::Repack => NameType::Repack,
-            LegacyNameType::Store => NameType::Store,
-            LegacyNameType::Others => NameType::Others,
+            LegacyNameType::Facility => NameRowType::Facility,
+            LegacyNameType::Patient => NameRowType::Patient,
+            LegacyNameType::Build => NameRowType::Build,
+            LegacyNameType::Invad => NameRowType::Invad,
+            LegacyNameType::Repack => NameRowType::Repack,
+            LegacyNameType::Store => NameRowType::Store,
+            LegacyNameType::Others => NameRowType::Others,
         }
     }
 }
@@ -294,7 +294,7 @@ impl SyncTranslation for NameTranslation {
         }
 
         let patient_type = match r#type {
-            NameType::Patient => LegacyNameType::Patient,
+            NameRowType::Patient => LegacyNameType::Patient,
             _ => {
                 return Ok(PushTranslateResult::Ignored(
                     "Only push name records that belong to patients".to_string(),

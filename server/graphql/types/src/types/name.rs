@@ -54,34 +54,25 @@ pub struct EqualFilterGenderInput {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")] // only needed to be comparable in tests
 pub enum NameNodeType {
     Facility,
-    Patient,
-    Build,
     Invad,
     Repack,
     Store,
-    Others,
 }
 impl NameNodeType {
     pub fn from_domain(name_type: &NameType) -> Self {
         match name_type {
             NameType::Facility => NameNodeType::Facility,
-            NameType::Patient => NameNodeType::Patient,
-            NameType::Build => NameNodeType::Build,
             NameType::Invad => NameNodeType::Invad,
             NameType::Repack => NameNodeType::Repack,
             NameType::Store => NameNodeType::Store,
-            NameType::Others => NameNodeType::Others,
         }
     }
     pub fn to_domain(self) -> NameType {
         match self {
             NameNodeType::Facility => NameType::Facility,
-            NameNodeType::Patient => NameType::Patient,
-            NameNodeType::Build => NameType::Build,
             NameNodeType::Invad => NameType::Invad,
             NameNodeType::Repack => NameType::Repack,
             NameNodeType::Store => NameType::Store,
-            NameNodeType::Others => NameType::Others,
         }
     }
 }
@@ -297,7 +288,7 @@ mod test {
                 NameNode {
                     name: Name {
                         name_row: inline_init(|r: &mut NameRow| {
-                            r.r#type = NameType::Patient;
+                            r.r#type = NameType::Repack;
                             r.code = "some code".to_string();
                             r.first_name = Some("first_name".to_string());
                             r.last_name = Some("last_name".to_string());
@@ -333,7 +324,7 @@ mod test {
         let expected = json!({
             "testQuery": {
                 "__typename": "NameNode",
-                "type": "PATIENT",
+                "type": "REPACK",
                 "code": "some code",
                 "firstName": "first_name",
                 "lastName": "last_name",
