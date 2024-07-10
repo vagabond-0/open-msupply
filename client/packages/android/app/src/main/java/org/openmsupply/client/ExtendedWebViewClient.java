@@ -14,33 +14,24 @@ import java.util.List;
 
 public class ExtendedWebViewClient extends BridgeWebViewClient {
     Bridge bridge;
+    String jsInject = "";
 
     public ExtendedWebViewClient(Bridge bridge) {
         super(bridge);
-
         this.bridge = bridge;
-    }
-
-    // Have to manually inject Capacitor JS, this typically happens in
-    // WebViewLocalServer.handleProxyRequest
-    // but since it manually uses net.URL to fetch the content of request, this
-    // fails for self signed certificates and plugin definitions etc is not injected
-    @Override
-    public void onPageStarted(WebView webView, String url, Bitmap favicon) {
-        if (url.startsWith("data:text")) return;
 
         // TODO make sure this is only injected for pages in native bundle
         // There is no way to get the full list of plugins from bridge, use 'debug' and
         // see what plugins to add
         List<PluginHandle> pluginList = Arrays.asList(
-            bridge.getPlugin("NativeApi"),
-            bridge.getPlugin("Keyboard"),
-            bridge.getPlugin("WebView"),
-            bridge.getPlugin("BarcodeScanner"),
-            bridge.getPlugin("Preferences"),
-            bridge.getPlugin("KeepAwake"),
-            bridge.getPlugin("App"),
-            bridge.getPlugin("Printer")
+                bridge.getPlugin("NativeApi"),
+                bridge.getPlugin("Keyboard"),
+                bridge.getPlugin("WebView"),
+                bridge.getPlugin("BarcodeScanner"),
+                bridge.getPlugin("Preferences"),
+                bridge.getPlugin("KeepAwake"),
+                bridge.getPlugin("App"),
+                bridge.getPlugin("Printer")
         );
 
         try {
@@ -57,7 +48,6 @@ public class ExtendedWebViewClient extends BridgeWebViewClient {
 
             // From JSInjector.getScriptString()
             String fullScript = globalJS +
-                    // " \n\n console.log('> injecting plugin code < " + url + "');\n\n" +
                     " \n\n" +
                     localUrlJS +
                     "\n\n" +
@@ -72,8 +62,22 @@ public class ExtendedWebViewClient extends BridgeWebViewClient {
                     cordovaPluginsJS +
                     "\n\n";
 
+        } catch (Exception ex) {
+            Logger.error("Unable to create JS bundle for Capacitor", ex);
+        }
+    }
+
+    // Have to manually inject Capacitor JS, this typically happens in
+    // WebViewLocalServer.handleProxyRequest
+    // but since it manually uses net.URL to fetch the content of request, this
+    // fails for self signed certificates and plugin definitions etc is not injected
+    @Override
+    public void onPageStarted(WebView webView, String url, Bitmap favicon) {
+        if (url.startsWith("data:text")) return;
+
+        try {
             // .post to run on UI thread
-            webView.post(() -> webView.evaluateJavascript(fullScript, null));
+            webView.post(() -> webView.evaluateJavascript(jsInject, null));
         } catch (Exception ex) {
             Logger.error("Unable to export Capacitor JS. App will not function!", ex);
         }
