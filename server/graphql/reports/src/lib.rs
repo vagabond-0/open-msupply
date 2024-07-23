@@ -4,6 +4,7 @@ use printing::{print_report, print_report_definition, PrintReportResponse};
 use reports::{
     report, reports, ReportFilterInput, ReportResponse, ReportSortInput, ReportsResponse,
 };
+use service::report::report_service::PrintFormat as ServicePrintFormat;
 
 mod printing;
 mod reports;
@@ -15,6 +16,7 @@ pub struct ReportQueries;
 pub enum PrintFormat {
     Pdf,
     Html,
+    Excel,
 }
 
 #[Object]
@@ -59,22 +61,7 @@ impl ReportQueries {
         format: Option<PrintFormat>,
         sort: Option<PrintReportSortInput>,
     ) -> Result<PrintReportResponse> {
-        let report_format = match format {
-            Some(PrintFormat::Html) => Some(service::report::report_service::PrintFormat::Html),
-            Some(PrintFormat::Pdf) | None => {
-                Some(service::report::report_service::PrintFormat::Pdf)
-            }
-        };
-        print_report(
-            ctx,
-            store_id,
-            report_id,
-            data_id,
-            arguments,
-            report_format,
-            sort,
-        )
-        .await
+        print_report(ctx, store_id, report_id, data_id, arguments, format, sort).await
     }
 
     /// Can be used when developing reports, e.g. to print a report that is not already in the
@@ -87,7 +74,18 @@ impl ReportQueries {
         #[graphql(desc = "The report definition to be printed")] report: serde_json::Value,
         data_id: Option<String>,
         arguments: Option<serde_json::Value>,
+        format: Option<PrintFormat>,
     ) -> Result<PrintReportResponse> {
-        print_report_definition(ctx, store_id, name, report, data_id, arguments).await
+        print_report_definition(ctx, store_id, name, report, data_id, arguments, format).await
+    }
+}
+
+impl PrintFormat {
+    fn to_domain(self) -> ServicePrintFormat {
+        match self {
+            PrintFormat::Pdf => ServicePrintFormat::Pdf,
+            PrintFormat::Html => ServicePrintFormat::Html,
+            PrintFormat::Excel => ServicePrintFormat::Excel,
+        }
     }
 }
