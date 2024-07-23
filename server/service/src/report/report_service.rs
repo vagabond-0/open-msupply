@@ -134,7 +134,18 @@ fn print_html_report_to_excel(
     _: GeneratedReport,
     report_name: String,
 ) -> Result<String, ReportError> {
-    let book = umya_spreadsheet::new_file();
+    let mut book = umya_spreadsheet::new_file();
+    // Error can be mapped more directly
+    let _ = book
+        .new_sheet("Report")
+        .map_err(|err| ReportError::DocGenerationError(format!("{}", err)))?;
+
+    book.get_sheet_by_name_mut("Report")
+        .ok_or(ReportError::DocGenerationError(
+            "error getting sheet".to_string(),
+        ))?
+        .get_cell_mut("A1")
+        .set_value("Test");
 
     let now: DateTime<Utc> = SystemTime::now().into();
     let file_service = StaticFileService::new(base_dir)
