@@ -24,6 +24,7 @@ use super::{
 pub enum PrintFormat {
     Pdf,
     Html,
+    Excel,
 }
 
 #[derive(Debug)]
@@ -117,11 +118,40 @@ pub trait ReportServiceTrait: Sync + Send {
             Some(PrintFormat::Html) => {
                 print_html_report_to_html(base_dir, document, report.name.clone())
             }
+            Some(PrintFormat::Excel) => {
+                print_html_report_to_excel(base_dir, document, report.name.clone())
+            }
             Some(PrintFormat::Pdf) | None => {
                 print_html_report_to_pdf(base_dir, document, report.name.clone())
             }
         }
     }
+}
+
+/// Converts a HTML report to a pdf file and returns the file id
+fn print_html_report_to_excel(
+    base_dir: &Option<String>,
+    _: GeneratedReport,
+    report_name: String,
+) -> Result<String, ReportError> {
+    let book = umya_spreadsheet::new_file();
+
+    let now: DateTime<Utc> = SystemTime::now().into();
+    let file_service = StaticFileService::new(base_dir)
+        .map_err(|err| ReportError::DocGenerationError(format!("{}", err)))?;
+
+    let reserved_file = file_service
+        .reserve_file(
+            &format!("{}_{}.pdf", now.format("%Y%m%d_%H%M%S"), report_name),
+            &StaticFileCategory::Temporary,
+            None,
+        )
+        .map_err(|err| ReportError::DocGenerationError(format!("{}", err)))?;
+
+    umya_spreadsheet::writer::xlsx::write(&book, reserved_file.path)
+        .map_err(|err| ReportError::DocGenerationError(format!("{}", err)))?;
+
+    Ok(reserved_file.id)
 }
 
 /// Converts a HTML report to a pdf file and returns the file id
