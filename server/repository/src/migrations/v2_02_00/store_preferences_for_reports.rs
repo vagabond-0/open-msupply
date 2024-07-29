@@ -2,12 +2,13 @@ use crate::{
     migrations::{sql, DOUBLE},
     StorageConnection,
 };
+use util::constants::DEFAULT_AMC_LOOKBACK_MONTHS;
 
 pub(crate) fn migrate(connection: &StorageConnection) -> anyhow::Result<()> {
     sql!(
         connection,
         r#"
-            ALTER TABLE store_preference ADD COLUMN monthly_consumption_look_back_period {DOUBLE} DEFAULT 0.0;
+            ALTER TABLE store_preference ADD COLUMN monthly_consumption_look_back_period {DOUBLE} DEFAULT {DEFAULT_AMC_LOOKBACK_MONTHS};
             ALTER TABLE store_preference ADD COLUMN months_lead_time {DOUBLE} DEFAULT 0.0;
             ALTER TABLE store_preference ADD COLUMN months_overstock {DOUBLE} DEFAULT 6.0;
             ALTER TABLE store_preference ADD COLUMN months_understock {DOUBLE} DEFAULT 3.0;

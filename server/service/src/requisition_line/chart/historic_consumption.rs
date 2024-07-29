@@ -3,23 +3,23 @@ use std::ops::Neg;
 use chrono::NaiveDate;
 use repository::{
     ConsumptionFilter, ConsumptionRepository, ConsumptionRow, DateFilter, EqualFilter,
-    RepositoryError, StorageConnection,
+    RepositoryError, StorageConnection, StorePreferenceRowRepository,
 };
 use util::{
-    constants::{DEFAULT_AMC_LOOKBACK_MONTHS, NUMBER_OF_DAYS_IN_A_MONTH},
-    date_with_months_offset, first_day_of_the_month, last_day_of_the_month,
+    constants::NUMBER_OF_DAYS_IN_A_MONTH, date_with_months_offset, first_day_of_the_month,
+    last_day_of_the_month,
 };
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConsumptionHistoryOptions {
-    pub amc_lookback_months: u32,
+    pub amc_lookback_months: Option<f64>,
     pub number_of_data_points: u32,
 }
 
 impl Default for ConsumptionHistoryOptions {
     fn default() -> Self {
         Self {
-            amc_lookback_months: DEFAULT_AMC_LOOKBACK_MONTHS,
+            amc_lookback_months: None,
             number_of_data_points: 12,
         }
     }
@@ -37,10 +37,24 @@ pub fn get_historic_consumption_for_item(
     store_id: &str,
     item_id: &str,
     reference_date: NaiveDate,
-    options: ConsumptionHistoryOptions,
+    ConsumptionHistoryOptions {
+        amc_lookback_months,
+        number_of_data_points,
+    }: ConsumptionHistoryOptions,
 ) -> Result<Vec<ConsumptionHistory>, RepositoryError> {
+    let amc_lookback_months = match amc_lookback_months {
+        Some(v) => v,
+        None => {
+            StorePreferenceRowRepository::new(&connection)
+                .find_one_by_id(store_id)?
+                .unwrap_or_default()
+                .monthly_consumption_look_back_period
+        }
+    };
+
     // Initialise series
-    let points = generate_consumption_series(reference_date, options);
+    let points =
+        generate_consumption_series(reference_date, amc_lookback_months, number_of_data_points);
     // Get rows
     let filter = ConsumptionFilter::new()
         .store_id(EqualFilter::equal_to(store_id))
@@ -78,15 +92,13 @@ struct ConsumptionHistoryPoints {
 
 fn generate_consumption_series(
     reference_date: NaiveDate,
-    ConsumptionHistoryOptions {
-        amc_lookback_months,
-        number_of_data_points,
-    }: ConsumptionHistoryOptions,
+    amc_lookback_months: f64,
+    number_of_data_points: u32,
 ) -> ConsumptionHistoryPoints {
     // reference_date is counted as the first month data point
     let data_point_offset = (number_of_data_points as i32 - 1).neg();
     // current month as a whole is counted in historic amc calculation
-    let amc_calculation_offset = (amc_lookback_months as i32 - 1).neg();
+    let amc_calculation_offset = (amc_lookback_months.ceil() as i32 - 1).neg();
 
     let first_data_point_date =
         first_day_of_the_month(&date_with_months_offset(&reference_date, data_point_offset));
@@ -176,13 +188,7 @@ mod tests {
     #[test]
     fn test_generate_series() {
         assert_eq!(
-            generate_consumption_series(
-                NaiveDate::from_ymd_opt(2021, 1, 4).unwrap(),
-                ConsumptionHistoryOptions {
-                    amc_lookback_months: 5,
-                    number_of_data_points: 3
-                }
-            ),
+            generate_consumption_series(NaiveDate::from_ymd_opt(2021, 1, 4).unwrap(), 5.0, 3),
             ConsumptionHistoryPoints {
                 first_date: NaiveDate::from_ymd_opt(2020, 7, 1).unwrap(),
                 last_date: NaiveDate::from_ymd_opt(2021, 1, 31).unwrap(),

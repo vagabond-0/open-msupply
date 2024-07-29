@@ -9,6 +9,7 @@ use super::{store_row::store, user_row::user_account};
 use diesel::prelude::*;
 use diesel_derive_enum::DbEnum;
 use serde::{Deserialize, Serialize};
+use util::constants::DEFAULT_AMC_LOOKBACK_MONTHS;
 
 table! {
     store_preference (id) {
@@ -42,7 +43,7 @@ pub enum StorePreferenceType {
     StorePreferences,
 }
 
-#[derive(Clone, Queryable, Insertable, AsChangeset, Debug, PartialEq, Default)]
+#[derive(Clone, Queryable, Insertable, AsChangeset, Debug, PartialEq)]
 #[diesel(table_name = store_preference)]
 pub struct StorePreferenceRow {
     pub id: String, // store_id
@@ -60,6 +61,29 @@ pub struct StorePreferenceRow {
     pub months_understock: f64,
     pub months_items_expire: f64,
     pub stocktake_frequency: f64,
+}
+
+impl Default for StorePreferenceRow {
+    fn default() -> Self {
+        Self {
+            monthly_consumption_look_back_period: DEFAULT_AMC_LOOKBACK_MONTHS,
+
+            // Base default
+            id: Default::default(),
+            r#type: Default::default(),
+            pack_to_one: Default::default(),
+            response_requisition_requires_authorisation: Default::default(),
+            request_requisition_requires_authorisation: Default::default(),
+            om_program_module: Default::default(),
+            vaccine_module: Default::default(),
+            issue_in_foreign_currency: Default::default(),
+            months_lead_time: Default::default(),
+            months_overstock: Default::default(),
+            months_understock: Default::default(),
+            months_items_expire: Default::default(),
+            stocktake_frequency: Default::default(),
+        }
+    }
 }
 
 pub struct StorePreferenceRowRepository<'a> {
@@ -87,16 +111,6 @@ impl<'a> StorePreferenceRowRepository<'a> {
             .first(self.connection.lock().connection())
             .optional();
         result.map_err(RepositoryError::from)
-    }
-
-    pub fn find_many_by_id(
-        &self,
-        ids: &[String],
-    ) -> Result<Vec<StorePreferenceRow>, RepositoryError> {
-        let result = store_preference_dsl::store_preference
-            .filter(store_preference_dsl::id.eq_any(ids))
-            .load(self.connection.lock().connection())?;
-        Ok(result)
     }
 }
 

@@ -17,7 +17,7 @@ type ServiceError = RequisitionLineChartError;
 #[derive(InputObject)]
 pub struct ConsumptionOptionsInput {
     /// Defaults to 3 months
-    amc_lookback_months: Option<u32>,
+    amc_lookback_months: Option<f64>,
     /// Defaults to 12
     number_of_data_points: Option<u32>,
 }
@@ -117,7 +117,7 @@ impl ConsumptionOptionsInput {
         } = self;
         let default = ConsumptionHistoryOptions::default();
         ConsumptionHistoryOptions {
-            amc_lookback_months: amc_lookback_months.unwrap_or(default.amc_lookback_months),
+            amc_lookback_months,
             number_of_data_points: number_of_data_points.unwrap_or(default.number_of_data_points),
         }
     }
