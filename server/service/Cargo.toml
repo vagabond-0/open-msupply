@@ -56,6 +56,8 @@ telnet = "0.2.1"
 tempfile = "3.10.1"
 fast_scraper = "0.14.5"
 umya-spreadsheet = "2.0.0"
+extism = "1.5.0"
+base64 = "0.22.1"
 
 
 [dev-dependencies]
