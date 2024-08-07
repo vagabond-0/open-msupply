@@ -4,14 +4,14 @@ pub(crate) struct Migrate;
 
 impl MigrationFragment for Migrate {
     fn identifier(&self) -> &'static str {
-        "add_new_field"
+        "drop_new_table"
     }
 
     fn migrate(&self, connection: &StorageConnection) -> anyhow::Result<()> {
         sql!(
             connection,
             r#"
-                ALTER TABLE new_table ADD extra_data TEXT
+               DROP table new_table;
             "#
         )?;
 
