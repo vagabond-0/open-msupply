@@ -1,14 +1,14 @@
 use crate::migrations::{Migration, MigrationFragment};
 
 use super::{
-    migration_fragment_log::fragment_migration_log::dsl, RepositoryError, StorageConnection,
+    migration_fragment_log::migration_fragment_log::dsl, RepositoryError, StorageConnection,
 };
 
 use chrono::Utc;
 use diesel::prelude::*;
 
 table! {
-    fragment_migration_log (version_and_identifier) {
+    migration_fragment_log (version_and_identifier) {
         version_and_identifier -> Text,
         datetime -> Timestamp
     }
@@ -28,7 +28,11 @@ impl<'a> MigrationFragmentLogRepository<'a> {
         migration_fragment: &Box<dyn MigrationFragment>,
     ) -> String {
         // Must be base version (no RC)
-        format!("{}{}", migration.version(), migration_fragment.identifier())
+        format!(
+            "{}-{}",
+            migration.version(),
+            migration_fragment.identifier()
+        )
     }
 
     pub(crate) fn insert(
@@ -42,7 +46,7 @@ impl<'a> MigrationFragmentLogRepository<'a> {
             dsl::datetime.eq(Utc::now().naive_utc()),
         );
 
-        diesel::insert_into(dsl::fragment_migration_log)
+        diesel::insert_into(dsl::migration_fragment_log)
             .values(values)
             .execute(self.connection.lock().connection())?;
 
@@ -57,7 +61,7 @@ impl<'a> MigrationFragmentLogRepository<'a> {
         let filter = dsl::version_and_identifier
             .eq(Self::version_and_identifier(migration, migration_fragment));
 
-        let count: i64 = dsl::fragment_migration_log
+        let count: i64 = dsl::migration_fragment_log
             .filter(filter)
             .count()
             .get_result(self.connection.lock().connection())?;
