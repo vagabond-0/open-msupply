@@ -60,7 +60,6 @@ However if there are references from other tables to the new table we either nee
 
 (reference in parallel)
 (switching back to branch that has old field name)
-(working in parallel)
 
 
 ## Raw SQL vs Diesel
