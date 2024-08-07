@@ -1,7 +1,7 @@
 use super::{version::Version, Migration};
 
-mod add_new_field;
 mod add_new_table;
+mod delete_after_rc_drop_table;
 
 pub(crate) struct V2_03_00;
 
@@ -12,8 +12,8 @@ impl Migration for V2_03_00 {
 
     fn migrate_fragments(&self) -> Vec<Box<dyn super::MigrationFragment>> {
         vec![
+            Box::new(delete_after_rc_drop_table::Migrate),
             Box::new(add_new_table::Migrate),
-            Box::new(add_new_field::Migrate),
         ]
     }
 }

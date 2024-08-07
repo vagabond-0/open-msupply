@@ -4,7 +4,7 @@ pub(crate) struct Migrate;
 
 impl MigrationFragment for Migrate {
     fn identifier(&self) -> &'static str {
-        "add_new_table"
+        "add_new_table_with_new_id"
     }
 
     fn migrate(&self, connection: &StorageConnection) -> anyhow::Result<()> {
@@ -13,7 +13,8 @@ impl MigrationFragment for Migrate {
             r#"
                 CREATE TABLE new_table (
                     id TEXT NOT NULL PRIMARY KEY,
-                    data TEXT
+                    data {DOUBLE} NOT NULL,
+                    extra_data TEXT
                 )
             "#
         )?;
