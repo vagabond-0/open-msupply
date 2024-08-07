@@ -17,9 +17,15 @@ During startup server will run [these steps sequentially](mod.rs):
 1. Run through diesel migrations
 2. Query for `database version` of the database
 3. Using visitor pattern will try to run any migrations that are higher then `database version` (database version will be updated after each migration)
-4. Finally database version is set to `app version` ([root package.json](../../../../package.json) is embedded in binary)
+4. Will run any migration fragments that have not been run yet where migration are higher or equal to `database version`
+5. Finally database version is set to `app version` ([root package.json](../../../../package.json) is embedded in binary)
 
-Each migration implements two methods in migration visitor trait, version() and migrate(). Test database can be created for any database version, this allows us to test migrations (see templates for examples).
+Each migration implements three methods in migration visitor trait, version(), migrate() and migration_fragments(). Test database can be created for any database version, this allows us to test migrations (see templates for examples).
+
+`migrate()` are one time migrations
+
+`migrate_fragments()` will re-run any migration fragments that have not been run yet in current migration (*NOTE*: this is the preferred way to add migrations from version 2.2)
+
 
 Diesel dsl can be used in data migrations, however, for some operations sql statement are prefered, see `Raw SQL vs Diesel` below.
 
@@ -27,11 +33,34 @@ Diesel dsl can be used in data migrations, however, for some operations sql stat
 
 Identify next version, see [package.json](../../../../package.json) for current version, then increment `patch` by one (we use semantic versioning syntax for our version number, but our app versioning wouldn't necessarily follow SemVer guidelines which are aimed at publicly consumed packages and libraries, see [version.rs](./version.rs) for more details).
 
-**note** everything after `patch` is considered `pre-release`, and cannot be upgraded further (pre-release version is really undefined, it could be a test branch or a release candidate), but `pre-release` versions can be used to manually test migrations/functionality in production.
-
 Increment [package.json](../../../../package.json) version to the new version and create new migration folder with the version number. Copy template or existing migration, and rename to new version appropriately. 
 
 Add new version mod to [root migrations mode](mod.rs) and add new version to `vec!` of visitors. Add actual migration code and tests, through tests you should be able to check sql syntax and data migration logic without starting server.
+
+## Migration Fragments
+
+We had two issues with migrations:
+
+1 - Migrations were disabled in RC versions, and if we had schema patches, QA team found it hard to constantly re-initialise database and add new test data etc...
+2 - In development, while changing branches, newly added migrations did not run, again requiring manual re-run of those migrations
+
+This is why Migration Fragments were added, via `migration_ragments()` method on Migration trait. 
+
+*With great power comes great responsibility*
+
+There was a deliberate restriction to not allow RC migrations, and to restrict migration to `one time` during develop because it could cause an 'unknown state' of database, as outlined in use cases below. However, most of the time migration patches done in development or in RC testing phase can be executed safely in isolation with Migration Fragments. There are still so many use cases where migrations could cause undefined database state, here are some examples of flexibility of Migration Fragments and gotchas.
+
+We start with adding a new migration and a new table.
+
+Someone adds a column to that table (make sure it has reasonable defaults if it the column is not optional !).
+
+Modifying a column would require quite a lot of SQLite code, but we can drop table and re-create it.
+
+However if there are references from other tables to the new table we either need to drop them also or
+
+(reference in parallel)
+(switching back to branch that has old field name)
+
 
 ## Raw SQL vs Diesel
 
