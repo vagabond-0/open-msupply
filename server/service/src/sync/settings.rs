@@ -26,9 +26,9 @@ pub struct BatchSize {
 impl Default for BatchSize {
     fn default() -> Self {
         Self {
-            remote_pull: 500,
+            remote_pull: 1000, // This is limited to 1000 in: https://github.com/msupply-foundation/msupply/blob/81d918d299e31673365a07defebb506a14aba372/Project/Sources/Methods/syncV5API_queuedRecordsGet.4dm#L14
             remote_push: 1024,
-            central_pull: 500,
+            central_pull: 1000, // This is limited to 1000 in: https://github.com/msupply-foundation/msupply/blob/81d918d299e31673365a07defebb506a14aba372/Project/Sources/Methods/syncV5API_centralRecords.4dm#L13
         }
     }
 }

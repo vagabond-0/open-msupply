@@ -1,4 +1,4 @@
-use std::{collections::HashMap, convert::TryInto};
+use std::{collections::HashMap, convert::TryInto, time::Duration};
 
 use crate::{service_provider::ServiceProvider, sync::settings::SyncSettings};
 use repository::migrations::Version;
@@ -127,18 +127,36 @@ impl SyncApiV5 {
             .join(route)
             .map_err(|error| self.api_error(route, error.into()))?;
 
-        let result = Client::new()
-            .get(url.clone())
-            .headers(tuple_vec_to_header(vec![
-                ("msupply-site-uuid", site_uuid),
-                ("app-version", app_version),
-                ("app-name", app_name),
-                ("version", sync_version),
-            ]))
-            .basic_auth(username, Some(password_sha256))
-            .query(query)
-            .send()
-            .await;
+        let mut max_retries = 10;
+        let result = loop {
+            let result = Client::builder()
+                .connect_timeout(Duration::from_secs(1))
+                .gzip(true) // This should be set automatically with "gzip" feature
+                .build()
+                .unwrap()
+                .get(url.clone())
+                .headers(tuple_vec_to_header(vec![
+                    ("msupply-site-uuid", site_uuid),
+                    ("app-version", app_version),
+                    ("app-name", app_name),
+                    ("version", sync_version),
+                ]))
+                .basic_auth(username, Some(password_sha256))
+                .query(query)
+                .send()
+                .await;
+
+            let Err(error) = &result else {
+                break result;
+            };
+
+            if error.is_connect() && max_retries > 0 {
+                max_retries = max_retries - 1;
+                continue;
+            }
+
+            break result;
+        };
 
         response_or_err(result)
             .await
@@ -164,20 +182,38 @@ impl SyncApiV5 {
             .join(route)
             .map_err(|error| self.api_error(route, error.into()))?;
 
-        let result = Client::new()
-            .post(url.clone())
-            .headers(tuple_vec_to_header(vec![
-                ("msupply-site-uuid", site_uuid),
-                ("app-version", app_version),
-                ("app-name", app_name),
-                ("version", sync_version),
-            ]))
-            .basic_auth(username, Some(password_sha256))
-            // Re unwrap, from to_string documentation:
-            // Serialization can fail if T's implementation of Serialize decides to fail, or if T contains a map with non-string keys.
-            .body(serde_json::to_string(&body).unwrap())
-            .send()
-            .await;
+        let mut max_retries = 10;
+        let result = loop {
+            let result = Client::builder()
+                .connect_timeout(Duration::from_secs(1))
+                .gzip(true) // This should be set automatically with "gzip" feature
+                .build()
+                .unwrap()
+                .post(url.clone())
+                .headers(tuple_vec_to_header(vec![
+                    ("msupply-site-uuid", site_uuid),
+                    ("app-version", app_version),
+                    ("app-name", app_name),
+                    ("version", sync_version),
+                ]))
+                .basic_auth(username, Some(password_sha256))
+                // Re unwrap, from to_string documentation:
+                // Serialization can fail if T's implementation of Serialize decides to fail, or if T contains a map with non-string keys.
+                .body(serde_json::to_string(&body).unwrap())
+                .send()
+                .await;
+
+            let Err(error) = &result else {
+                break result;
+            };
+
+            if error.is_connect() && max_retries > 0 {
+                max_retries = max_retries - 1;
+                continue;
+            }
+
+            break result;
+        };
 
         response_or_err(result)
             .await
