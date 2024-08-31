@@ -72,7 +72,14 @@
     "label.requisition-category-message": "Requisition Category: Category Value",
     "label.unit":"Unit",
     "label.soh": "SOH",
+    "label.mos": "MOS",
     "label.supplier": "Supplier",
+    "label.consumption": "Consumption",
+    "label.no-consumption": "No consumption",
+    "label.out-of-stock": "Out of stock",
+    "label.well-stocked": "Well stocked",
+    "label.undrstocked": "Understocked",
+    "label.overstocked": "Overstocked",
     "message.contact-support": "Please contact support@msupply.foundation about configuring reports",
     "message.arguments": "You can customize what is shown on the report by specifying some of the optional details below. Click OK to view the report."
 }
