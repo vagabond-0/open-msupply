@@ -54,6 +54,10 @@
     "label.supplied-to": "Supplied to",
     "label.packing-slip": "Packing slip",
     "label.issued": "Issued",
+    "label.repack": "Repack",
+    "label.item-code": "Item code",
+    "label.original": "Original",
+    "label.new": "New",
     "message.contact-support": "Please contact support@msupply.foundation about configuring reports",
     "message.arguments": "You can customize what is shown on the report by specifying some of the optional details below. Click OK to view the report."
 }
