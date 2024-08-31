@@ -63,6 +63,7 @@ pub async fn generate_report(
     arguments: Option<serde_json::Value>,
     format: Option<PrintFormat>,
     sort: Option<PrintReportSortInput>,
+    _current_language: Option<String>,
 ) -> Result<PrintReportResponse> {
     let user = validate_auth(
         ctx,

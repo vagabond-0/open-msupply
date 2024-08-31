@@ -60,8 +60,9 @@ impl ReportQueries {
         arguments: Option<serde_json::Value>,
         format: Option<PrintFormat>,
         sort: Option<PrintReportSortInput>,
+        current_language: Option<String>,
     ) -> Result<PrintReportResponse> {
-        generate_report(ctx, store_id, report_id, data_id, arguments, format, sort).await
+        generate_report(ctx, store_id, report_id, data_id, arguments, format, sort, current_language).await
     }
 
     /// Can be used when developing reports, e.g. to generate a report that is not already in the
