@@ -63,7 +63,7 @@ pub async fn generate_report(
     arguments: Option<serde_json::Value>,
     format: Option<PrintFormat>,
     sort: Option<PrintReportSortInput>,
-    _current_language: Option<String>,
+    current_language: Option<String>,
 ) -> Result<PrintReportResponse> {
     let user = validate_auth(
         ctx,
@@ -117,6 +117,7 @@ pub async fn generate_report(
         report_data,
         arguments,
         format.map(PrintFormat::to_domain),
+        current_language,
     ) {
         Ok(file_id) => file_id,
         Err(err) => {
@@ -139,6 +140,7 @@ pub async fn generate_report_definition(
     data_id: Option<String>,
     arguments: Option<serde_json::Value>,
     format: Option<PrintFormat>,
+    current_language: Option<String>,
 ) -> Result<PrintReportResponse> {
     let user = validate_auth(
         ctx,
@@ -197,6 +199,7 @@ pub async fn generate_report_definition(
         report_data,
         arguments,
         format.map(PrintFormat::to_domain),
+        current_language,
     ) {
         Ok(file_id) => file_id,
         Err(err) => {
