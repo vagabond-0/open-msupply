@@ -42,6 +42,8 @@
     "label.item-name":"Item name",
     "label.quantity": "Quantity",
     "label.pack": "Pack",
+    "label.pack-size": "Pack size",
+    "label.pack-quantity": "Pack quantity",
     "label.expiry": "Expiry",
     "label.cost-price": "Cost price",
     "label.sell-price": "Sell price",
@@ -68,6 +70,9 @@
     "label.collected-by": "Collected by",
     "label.authorized-by": "Authorized-by",
     "label.requisition-category-message": "Requisition Category: Category Value",
+    "label.unit":"Unit",
+    "label.soh": "SOH",
+    "label.supplier": "Supplier",
     "message.contact-support": "Please contact support@msupply.foundation about configuring reports",
     "message.arguments": "You can customize what is shown on the report by specifying some of the optional details below. Click OK to view the report."
 }
