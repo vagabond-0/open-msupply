@@ -91,6 +91,9 @@
     "label.net-increase": "Net Increase",
     "label.net-decrease": "Net Decrease",
     "label.net-variance": "Net Variance",
+    "label.page": "Page",
+    "label.stocktake-sheet": "Stocktake sheet",
+    "label.actual-stock": "Actual stock",
     "message.contact-support": "Please contact support@msupply.foundation about configuring reports",
     "message.arguments": "You can customize what is shown on the report by specifying some of the optional details below. Click OK to view the report.",
     "title.stock-take-variance-report": "Stock Take Variance Report"
