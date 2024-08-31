@@ -13,6 +13,18 @@
     "label.stocktake-frequency": "Stocktake frequency",
     "label.threshold-for-overstock": "Threshold for overstock",
     "label.threshold-for-understock": "Threshold for understock",
+    "label.expiry-date": "Expiry date",
+    "label.stock-on-hand": "Stock on hand",
+    "label.expected-usage": "Expected usage",
+    "label.batch": "Batch",
+    "label.code": "Code",
+    "label.name": "Name",
+    "label.stock-at-risk": "Stock at risk",
+    "label.expiring-in-days": "Expiring in (days)",
+    "label.invoice": "Invoice",
+    "label.received-from": "Received from:",
+    "label.status": "Status:",
+    "label.their-ref": "Their ref",
     "message.contact-support": "Please contact support@msupply.foundation about configuring reports",
     "message.arguments": "You can customize what is shown on the report by specifying some of the optional details below. Click OK to view the report."
 }
