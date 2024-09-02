@@ -52,7 +52,7 @@ impl Localisations {
     pub fn get_translation(&self, args: &HashMap<String, serde_json::Value> ) -> String {
         let key = args.get("key").and_then(serde_json::Value::as_str).unwrap_or("").to_string();
         let lang = args.get("lang").and_then(serde_json::Value::as_str).unwrap_or("en").to_string();
-        let namespace = args.get("namespace").and_then(serde_json::Value::as_str).unwrap_or("").to_string();
+        let namespace = args.get("namespace").and_then(serde_json::Value::as_str).unwrap_or("reports.json").to_string();
         let fallback = args.get("fallback").and_then(serde_json::Value::as_str).unwrap_or("").to_string();
 
         self.translations
