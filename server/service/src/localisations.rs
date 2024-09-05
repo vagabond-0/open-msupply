@@ -1,25 +1,21 @@
 use std::collections::HashMap;
-use std::error::Error;
 use serde_yaml::Value;
 
 use rust_embed::RustEmbed;
+use thiserror::Error;
 
 #[derive(RustEmbed)]
 // Relative to server/Cargo.toml
 #[folder = "../../client/packages/common/src/intl/locales"]
 pub struct EmbeddedLocalisations;
 
-#[derive(Debug)]
-pub struct TranslationError;
-
-impl std::fmt::Display for TranslationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "No translation")
-    }
+#[derive(Debug, Error)]
+pub enum TranslationError {
+    #[error("Key must be specified")]
+    KeyMustBeSpecified,
+    #[error("No translation found and fallback is missing")]
+    TranslationNotFoundAndNoFallback
 }
-
-impl Error for TranslationError {}
-
 
 // struct to manage translations
 #[derive(Clone)]
@@ -73,43 +69,38 @@ impl Localisations {
     // Get a translation for a given key and language
     // next need to add fallback and namespace to get Translation function
     pub fn get_translation(&self, args: &HashMap<String, serde_json::Value> ) -> Result<String, TranslationError> {
-        let key = args.get("k").and_then(serde_json::Value::as_str).unwrap_or("");
+        let key = args.get("k").and_then(serde_json::Value::as_str).ok_or(TranslationError::KeyMustBeSpecified)?;
         let language: &str = args.get("l").and_then(serde_json::Value::as_str).unwrap_or("");
         let namespace = args.get("n").and_then(serde_json::Value::as_str).unwrap_or("");
-        let fallback = args.get("f").and_then(serde_json::Value::as_str);
+        let fallback = args.get("f").and_then(serde_json::Value::as_str).map(|s| s.to_string());
 
         // make cascading array of fallback options:
-        for (language, namespace, key, fallback) in [
+        for (language, namespace, key) in [
             // first look for key in nominated namespace
-            (language, namespace, key, None), 
-            // then look for key in common.json
-            (language, "common.json", key, None), 
-            // then look for fallback
-            ("", "", "", fallback ),
+            (language, namespace, key), 
             // then look for key in nominated namespace in en
-            ("en", namespace, key, None), 
+            ("en", namespace, key), 
+            // then look for key in common.json
+            (language, "common.json", key), 
             // then look for key in common.json in en
-            ("en", "common.json", key, None),             
+            ("en", "common.json", key),             
             ] {
-            match self.find_key(language, namespace, key, fallback) {
+            match self.find_key(language, namespace, key) {
                 Some(string) => return Ok(string),
                 None => continue,
             }
         };
         // throw error if no translation found above (and don't render report)
-        Err(TranslationError)
+        fallback.ok_or(TranslationError::TranslationNotFoundAndNoFallback)
     }
 
-    fn find_key(&self, language: &str, namespace: &str, key: &str, fallback: Option<&str>) -> Option<String> {
-        if let Some(fallback) = fallback {
-            return Some(fallback.to_owned())
-        } else {
-            self.translations
-            .get(language)
-            .and_then(|map| map.get(namespace))
-            .and_then(|map| map.get(key))
-            .cloned()
-        }
+    fn find_key(&self, language: &str, namespace: &str, key: &str) -> Option<String> {
+        self.translations
+        .get(language)
+        .and_then(|map| map.get(namespace))
+        .and_then(|map| map.get(key))
+        .map(|s| s.to_string())
+      
     }
 }
 
