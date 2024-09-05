@@ -21,7 +21,8 @@ export const DraftLine = {
   fromItem: (
     stocktakeId: string,
     item: ItemRowFragment,
-    defaultPackSize: number
+    defaultPackSize: number,
+    defaultPrice: number
   ): DraftStocktakeLine => {
     return {
       stocktakeId,
@@ -32,8 +33,9 @@ export const DraftLine = {
       id: FnUtils.generateUUID(),
       expiryDate: null,
       itemId: item.id,
-      sellPricePerPack: 0,
-      costPricePerPack: 0,
+      sellPricePerPack: defaultPrice,
+      // Do we apply discount ?
+      costPricePerPack: defaultPrice,
       packSize: defaultPackSize,
       location: null,
       itemName: item.name,

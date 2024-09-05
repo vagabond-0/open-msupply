@@ -292,3 +292,7 @@ mutation insertStocktake($input: InsertStocktakeInput!, $storeId: String!) {
     }
   }
 }
+
+query getDefaultPrice($storeId: String!, $itemId: String!) {
+  defaultPrice(storeId: $storeId, itemId: $itemId)
+}

@@ -70,6 +70,10 @@ impl GeneralQueries {
         Ok(0.1)
     }
 
+    pub async fn default_price(&self, store_id: String, item_id: String) -> Result<f64> {
+        Ok(200.0)
+    }
+
     pub async fn logout(&self, ctx: &Context<'_>) -> Result<LogoutResponse> {
         logout(ctx)
     }

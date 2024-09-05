@@ -90,6 +90,14 @@ export type InsertStocktakeMutationVariables = Types.Exact<{
 
 export type InsertStocktakeMutation = { __typename: 'Mutations', insertStocktake: { __typename: 'StocktakeNode', id: string, stocktakeNumber: number } };
 
+export type GetDefaultPriceQueryVariables = Types.Exact<{
+  storeId: Types.Scalars['String']['input'];
+  itemId: Types.Scalars['String']['input'];
+}>;
+
+
+export type GetDefaultPriceQuery = { __typename: 'Queries', defaultPrice: number };
+
 export const StocktakeRowFragmentDoc = gql`
     fragment StocktakeRow on StocktakeNode {
   __typename
@@ -378,6 +386,11 @@ export const InsertStocktakeDocument = gql`
   }
 }
     `;
+export const GetDefaultPriceDocument = gql`
+    query getDefaultPrice($storeId: String!, $itemId: String!) {
+  defaultPrice(storeId: $storeId, itemId: $itemId)
+}
+    `;
 
 export type SdkFunctionWrapper = <T>(action: (requestHeaders?:Record<string, string>) => Promise<T>, operationName: string, operationType?: string, variables?: any) => Promise<T>;
 
@@ -409,6 +422,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     insertStocktake(variables: InsertStocktakeMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<InsertStocktakeMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<InsertStocktakeMutation>(InsertStocktakeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'insertStocktake', 'mutation', variables);
+    },
+    getDefaultPrice(variables: GetDefaultPriceQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetDefaultPriceQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetDefaultPriceQuery>(GetDefaultPriceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'getDefaultPrice', 'query', variables);
     }
   };
 }

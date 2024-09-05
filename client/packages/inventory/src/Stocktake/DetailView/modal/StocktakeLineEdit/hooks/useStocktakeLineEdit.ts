@@ -2,12 +2,14 @@ import {
   RecordPatch,
   ArrayUtils,
   getErrorMessage,
+  useAuthContext,
 } from '@openmsupply-client/common';
 import { ItemRowFragment, usePackVariant } from '@openmsupply-client/system';
 import { StocktakeLineFragment, useStocktake } from './../../../../api';
 import { DraftStocktakeLine, DraftLine } from '../utils';
 import { useNextItem } from './useNextItem';
 import { useDraftStocktakeLines } from './useDraftStocktakeLines';
+import { useGetDefaultPrice } from 'packages/inventory/src/Stocktake/api/hooks/utils';
 interface useStocktakeLineEditController {
   draftLines: DraftStocktakeLine[];
   update: (patch: RecordPatch<StocktakeLineFragment>) => void;
@@ -20,6 +22,7 @@ interface useStocktakeLineEditController {
 export const useStocktakeLineEdit = (
   item: ItemRowFragment | null
 ): useStocktakeLineEditController => {
+  const { storeId } = useAuthContext();
   const { id } = useStocktake.document.fields('id');
   const { items } = useStocktake.line.rows();
   const filteredItems = items.filter(item => item.item?.id === item?.id);
@@ -28,6 +31,10 @@ export const useStocktakeLineEdit = (
   const { variantsControl } = usePackVariant(String(item?.id), null);
   const { saveAndMapStructuredErrors: upsertLines, isLoading: isSaving } =
     useStocktake.line.save();
+  const { defaultPrice, isFetching } = useGetDefaultPrice({
+    storeId,
+    itemId: item?.id || '',
+  });
 
   const defaultPackSize = variantsControl?.activeVariant?.packSize || 1;
 
@@ -48,9 +55,9 @@ export const useStocktakeLineEdit = (
   };
 
   const addLine = () => {
-    if (item) {
+    if (item && !isFetching) {
       setDraftLines(lines => [
-        DraftLine.fromItem(id, item, defaultPackSize),
+        DraftLine.fromItem(id, item, defaultPackSize, defaultPrice),
         ...lines,
       ]);
     }

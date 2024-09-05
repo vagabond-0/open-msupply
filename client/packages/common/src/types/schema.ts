@@ -5223,6 +5223,7 @@ export type Queries = {
   contactTraces: ContactTraceResponse;
   currencies: CurrenciesResponse;
   databaseSettings: DatabaseSettingsNode;
+  defaultPrice: Scalars['Float']['output'];
   demographicIndicators: DemographicIndicatorsResponse;
   demographicProjectionByBaseYear: DemographicProjectionResponse;
   demographicProjections: DemographicProjectionsResponse;
@@ -5475,6 +5476,12 @@ export type QueriesContactTracesArgs = {
 export type QueriesCurrenciesArgs = {
   filter?: InputMaybe<CurrencyFilterInput>;
   sort?: InputMaybe<Array<CurrencySortInput>>;
+};
+
+
+export type QueriesDefaultPriceArgs = {
+  itemId: Scalars['String']['input'];
+  storeId: Scalars['String']['input'];
 };
 
 
