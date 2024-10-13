@@ -16,6 +16,7 @@
         <td>{{t(k="report.pack-quantity", f="Pack quantity")}}</td>
         <td>{{t(k="label.soh", f="SOH")}}</td>
         <td>{{t(k="label.supplier", f="Supplier")}}</td>
+        <td>test convert data custom wasm</td>
       </tr>
     </thead>
     <tbody>
@@ -40,6 +41,7 @@
           stockLine.totalNumberOfPacks * stockLine.packSize | round( precision=1)  
         }}</td>
         <td>{{stockLine.supplierName}}</td>    
+        <td>{{stockLine.item.theNewFieldWeAreAdding}}</td>
       </tr>
       {% endfor %}
     </tbody>
