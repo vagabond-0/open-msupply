@@ -17,6 +17,7 @@
         ({{arguments.monthlyConsumptionLookBackPeriod | default(value=3)}})
         {{t(k="label.months", f="months")}}</td>
         <td>{{t(k="report.mos", f="MOS")}}</td>
+        <td>test convert data js</td>
       </tr>
     </thead>
     <tbody>
@@ -51,7 +52,7 @@
         <td>
           {{item.stats.availableMonthsOfStockOnHand | default(value=0) | round( precision=1)}}
         </td>
-        
+        <td>{{item.stats.theNewFieldWeAreAdding}}</td>
       </tr>
       {% endfor %}
     </tbody>
