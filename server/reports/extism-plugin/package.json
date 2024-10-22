@@ -1,14 +1,13 @@
 {
-  "name": "convert_data_js",
+  "name": "extism-plugin",
   "version": "1.0.0",
-  "main": "convert_data.js",
+  "main": "index.js",
   "scripts": {
-    "build": "node esbuild.js && extism-js dist/convert_data.js -i src/convert_data.d.ts -o dist/plugin.wasm"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "types": "./convert_data.d.ts",
   "description": "",
   "devDependencies": {
     "@extism/js-pdk": "^1.1.1",

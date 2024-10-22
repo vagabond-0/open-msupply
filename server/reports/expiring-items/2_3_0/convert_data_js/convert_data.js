@@ -1,4 +1,4 @@
-import { processStockLines } from "./utils";
+import { processStockLines } from "./src/utils";
 
 function convert_data() {
   let res = JSON.parse(Host.inputString());

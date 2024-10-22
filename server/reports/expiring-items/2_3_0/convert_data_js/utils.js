@@ -1,4 +1,4 @@
-import { cleanUpNodes } from "../../../../utils";
+import { cleanUpNodes } from "../../../utils";
 
 const processStockLines = (nodes) => {
   nodes.forEach((line) => {

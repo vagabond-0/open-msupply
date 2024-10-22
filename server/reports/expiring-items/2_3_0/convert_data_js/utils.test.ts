@@ -5,8 +5,8 @@ import {
   calculateExpectedUsage,
   calculateStockAtRisk,
 } from "./utils";
-import inputData from "../input.json" assert { type: "json" };
-import outputData from "../output.json" assert { type: "json" };
+import inputData from "./input.json" assert { type: "json" };
+import outputData from "./output.json" assert { type: "json" };
 
 describe("test process stock lines", () => {
   beforeAll(() => {

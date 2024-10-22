@@ -2,7 +2,7 @@ const esbuild = require("esbuild");
 // include this if you need some node support:
 // npm i @esbuild-plugins/node-modules-polyfill --save-dev
 // const { NodeModulesPolyfillPlugin } = require('@esbuild-plugins/node-modules-polyfill')
-
+console.log("process", process);
 esbuild.build({
   // supports other types like js or ts
   entryPoints: ["src/convert_data.js"],

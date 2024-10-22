@@ -249,22 +249,45 @@ fn make_report(args: &BuildArgs, mut files: HashMap<String, PathBuf>) -> Result<
     // Then look for data conversion with js functions
     if let Some(convert_data) = &args.convert_data {
         if index.convert_data.is_none() {
-            let wasm: &String = &format!("{}/dist/plugin.wasm", convert_data);
-
             let mut chars = convert_data.chars();
             chars.next();
             chars.next();
-
             let dir = chars.as_str();
 
-            Command::new("npm")
-                .arg("run")
-                .arg("build")
-                .current_dir(dir)
-                .status()
-                .expect(&format!("failed to build wasm plugin function at: {}", dir));
+            let js = &format!("../../{}/convert_data.js", dir);
 
-            let encoded = BASE64_STANDARD.encode(fs::read(wasm).unwrap());
+            let ts = &format!("../../{}/convert_data.d.ts", dir);
+
+            let wasm = &format!("{}/dist/convert_data.wasm", dir);
+
+            let bundler_dir = "./reports/extism-plugin";
+
+            println!("dir {:?}", dir);
+            println!("js {:?}", js);
+            println!("wasm {:?}", wasm);
+            println!("ts {:?}", ts);
+            println!("bundler_dir {:?}", bundler_dir);
+
+            Command::new("node")
+                .arg("esbuild.js")
+                .arg("### test")
+                .current_dir(bundler_dir)
+                .status()
+                .expect(&format!("failed to run esbuild at"));
+
+            Command::new("extism-js")
+                .arg(js)
+                .arg("-i")
+                .arg(ts)
+                .arg("-o")
+                .arg(wasm)
+                .current_dir(bundler_dir)
+                .status()
+                .expect("Failed to run extism-js");
+
+            let output_wasm = &format!("{}/dist/convert_data.wasm", dir);
+
+            let encoded = BASE64_STANDARD.encode(fs::read(output_wasm).unwrap());
 
             index.convert_data = Some(encoded)
         }
