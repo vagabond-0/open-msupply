@@ -2,8 +2,9 @@ import * as Types from '@openmsupply-client/common';
 
 import { GraphQLClient, RequestOptions } from 'graphql-request';
 import gql from 'graphql-tag';
+import { ColdStorageTypeFragmentDoc } from '../../Item/api/operations.generated';
 type GraphQLClientRequestHeaders = RequestOptions['requestHeaders'];
-export type LocationRowFragment = { __typename: 'LocationNode', id: string, name: string, onHold: boolean, code: string, coldStorageType?: { __typename: 'ColdStorageTypeNode', id: string, name: string, maxTemperature: number, minTemperature: number } | null };
+export type LocationRowFragment = { __typename: 'LocationNode', id: string, name: string, onHold: boolean, code: string, coldStorageType?: { __typename: 'ColdStorageTypeNode', id: string, name: string, minTemperature: number, maxTemperature: number } | null };
 
 export type LocationsQueryVariables = Types.Exact<{
   storeId: Types.Scalars['String']['input'];
@@ -14,7 +15,7 @@ export type LocationsQueryVariables = Types.Exact<{
 }>;
 
 
-export type LocationsQuery = { __typename: 'Queries', locations: { __typename: 'LocationConnector', totalCount: number, nodes: Array<{ __typename: 'LocationNode', id: string, name: string, onHold: boolean, code: string, coldStorageType?: { __typename: 'ColdStorageTypeNode', id: string, name: string, maxTemperature: number, minTemperature: number } | null }> } };
+export type LocationsQuery = { __typename: 'Queries', locations: { __typename: 'LocationConnector', totalCount: number, nodes: Array<{ __typename: 'LocationNode', id: string, name: string, onHold: boolean, code: string, coldStorageType?: { __typename: 'ColdStorageTypeNode', id: string, name: string, minTemperature: number, maxTemperature: number } | null }> } };
 
 export type InsertLocationMutationVariables = Types.Exact<{
   input: Types.InsertLocationInput;
@@ -22,7 +23,7 @@ export type InsertLocationMutationVariables = Types.Exact<{
 }>;
 
 
-export type InsertLocationMutation = { __typename: 'Mutations', insertLocation: { __typename: 'InsertLocationError', error: { __typename: 'DatabaseError', description: string, fullError: string } | { __typename: 'InternalError', description: string, fullError: string } | { __typename: 'RecordAlreadyExist', description: string } | { __typename: 'UniqueValueViolation', description: string, field: Types.UniqueValueKey } } | { __typename: 'LocationNode', id: string, name: string, onHold: boolean, code: string, coldStorageType?: { __typename: 'ColdStorageTypeNode', id: string, name: string, maxTemperature: number, minTemperature: number } | null } };
+export type InsertLocationMutation = { __typename: 'Mutations', insertLocation: { __typename: 'InsertLocationError', error: { __typename: 'DatabaseError', description: string, fullError: string } | { __typename: 'InternalError', description: string, fullError: string } | { __typename: 'RecordAlreadyExist', description: string } | { __typename: 'UniqueValueViolation', description: string, field: Types.UniqueValueKey } } | { __typename: 'LocationNode', id: string, name: string, onHold: boolean, code: string, coldStorageType?: { __typename: 'ColdStorageTypeNode', id: string, name: string, minTemperature: number, maxTemperature: number } | null } };
 
 export type UpdateLocationMutationVariables = Types.Exact<{
   input: Types.UpdateLocationInput;
@@ -30,7 +31,7 @@ export type UpdateLocationMutationVariables = Types.Exact<{
 }>;
 
 
-export type UpdateLocationMutation = { __typename: 'Mutations', updateLocation: { __typename: 'LocationNode', id: string, name: string, onHold: boolean, code: string, coldStorageType?: { __typename: 'ColdStorageTypeNode', id: string, name: string, maxTemperature: number, minTemperature: number } | null } | { __typename: 'UpdateLocationError', error: { __typename: 'DatabaseError', description: string, fullError: string } | { __typename: 'InternalError', description: string, fullError: string } | { __typename: 'RecordBelongsToAnotherStore', description: string } | { __typename: 'RecordNotFound', description: string } | { __typename: 'UniqueValueViolation', description: string, field: Types.UniqueValueKey } } };
+export type UpdateLocationMutation = { __typename: 'Mutations', updateLocation: { __typename: 'LocationNode', id: string, name: string, onHold: boolean, code: string, coldStorageType?: { __typename: 'ColdStorageTypeNode', id: string, name: string, minTemperature: number, maxTemperature: number } | null } | { __typename: 'UpdateLocationError', error: { __typename: 'DatabaseError', description: string, fullError: string } | { __typename: 'InternalError', description: string, fullError: string } | { __typename: 'RecordBelongsToAnotherStore', description: string } | { __typename: 'RecordNotFound', description: string } | { __typename: 'UniqueValueViolation', description: string, field: Types.UniqueValueKey } } };
 
 export type DeleteLocationMutationVariables = Types.Exact<{
   storeId: Types.Scalars['String']['input'];
@@ -48,13 +49,10 @@ export const LocationRowFragmentDoc = gql`
   onHold
   code
   coldStorageType {
-    id
-    name
-    maxTemperature
-    minTemperature
+    ...ColdStorageType
   }
 }
-    `;
+    ${ColdStorageTypeFragmentDoc}`;
 export const LocationsDocument = gql`
     query locations($storeId: String!, $sort: [LocationSortInput!], $first: Int, $offset: Int, $filter: LocationFilterInput) {
   locations(
