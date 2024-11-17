@@ -64,11 +64,13 @@ public class NativeApi extends Plugin implements NsdManager.DiscoveryListener {
     boolean isResolvingServer;
     boolean shouldRestartDiscovery;
 
+    CertWebViewClient client;
+
     @Override
     public void load() {
         super.load();
 
-        CertWebViewClient client = new CertWebViewClient(this.getBridge(), this.getContext().getFilesDir(), this);
+        client = new CertWebViewClient(this.getBridge(), this.getContext().getFilesDir(), this);
         bridge.setWebViewClient(client);
 
         serversToResolve = new ArrayDeque<NsdServiceInfo>();
@@ -112,6 +114,7 @@ public class NativeApi extends Plugin implements NsdManager.DiscoveryListener {
     @Override
     protected void handleOnStart() {
         WebView webView = this.getBridge().getWebView();
+        client.loadJsInject();
         // this method (handleOnStart) is called when resuming and switching to the app
         // the webView url will be DEFAULT_URL only on the initial load
         // so this test is a quick check to see if we should be redirecting to the

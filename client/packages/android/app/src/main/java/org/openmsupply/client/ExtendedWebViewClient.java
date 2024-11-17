@@ -20,7 +20,12 @@ public class ExtendedWebViewClient extends BridgeWebViewClient {
         super(bridge);
 
         this.bridge = bridge;
-        this.jsInject = this.generatePluginScript();
+    }
+
+    public void loadJsInject() {
+        if(this.jsInject == null) {
+            this.jsInject = this.generatePluginScript();
+        }
     }
 
     // Have to manually inject Capacitor JS, this typically happens in
