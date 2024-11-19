@@ -20,7 +20,8 @@
       "label": "AMC Lookback Period",
       "options": {
         "readonly": true
-      }
+      },
+      "i18n": "label.add-charge"
     }
   ]
 }
