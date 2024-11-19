@@ -9,7 +9,8 @@
         },
         "itemName": {
           "description": "Item Name",
-          "type": "string"
+          "type": "string",
+          "i18n": "label.example-translation-1"
         },
         "monthlyConsumptionLookBackPeriod": {
           "description": "Average Monthly Consumption Look Back Period",

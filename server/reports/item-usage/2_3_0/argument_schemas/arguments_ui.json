@@ -7,7 +7,8 @@
       "label": "Item Code",
       "options": {
         "useDebounce": false
-      }
+      },
+      "i18n": "label.example-fall-through-key-does-not-exist"
     },
     {
       "type": "Control",
@@ -21,7 +22,7 @@
       "options": {
         "readonly": true
       },
-      "i18n": "label.add-charge"
+      "i18n": "label.example-translation-2"
     }
   ]
 }
