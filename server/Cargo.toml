@@ -94,6 +94,7 @@ members = [
   "graphql/stocktake_line",
   "graphql/types",
   "graphql/vaccine_course",
+  "compilation_check",
   "cli",
   "windows",
 ]

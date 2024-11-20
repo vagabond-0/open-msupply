@@ -12,6 +12,7 @@ use crate::{
 use self::middleware::{compress as compress_middleware, logger as logger_middleware};
 use actix_cors::Cors;
 use anyhow::Context;
+use compilation_check::store::GeneralService;
 use extism::set_log_callback;
 use graphql_core::loader::{get_loaders, LoaderRegistry};
 
@@ -101,13 +102,16 @@ pub async fn start_server(
     let (site_is_initialise_trigger, site_is_initialised_callback) =
         SiteIsInitialisedCallback::init();
 
-    let service_provider = Data::new(ServiceProvider::new_with_triggers(
+    let mut service_provider = ServiceProvider::new_with_triggers(
         connection_manager.clone(),
         &settings.server.base_dir.clone().unwrap(),
         processors_trigger,
         sync_trigger,
         site_is_initialise_trigger,
-    ));
+    );
+    service_provider.general_service = Box::new(GeneralService);
+    let service_provider = Data::new(service_provider);
+
     let loaders = get_loaders(&connection_manager, service_provider.clone()).await;
     let certificates = Certificates::try_load(&settings.server).unwrap();
     let token_bucket = Arc::new(RwLock::new(TokenBucket::new()));

@@ -56,7 +56,6 @@ use crate::{
     stock_line::{StockLineService, StockLineServiceTrait},
     stocktake::{StocktakeService, StocktakeServiceTrait},
     stocktake_line::{StocktakeLineService, StocktakeLineServiceTrait},
-    store::{get_store, get_stores},
     sync::{
         site_info::{SiteInfoService, SiteInfoTrait},
         sync_status::status::{SyncStatusService, SyncStatusTrait},
@@ -207,7 +206,7 @@ impl ServiceProvider {
             item_service: Box::new(crate::item::ItemService {}),
             item_stats_service: Box::new(ItemStatsService {}),
             clinician_service: Box::new(ClinicianService {}),
-            general_service: Box::new(GeneralService {}),
+            general_service: Box::new(DefaultGeneralService {}),
             report_service: Box::new(ReportService {}),
             settings: Box::new(SettingsService),
             document_service: Box::new(DocumentService {}),
@@ -301,7 +300,8 @@ pub trait GeneralServiceTrait: Sync + Send {
         filter: Option<StoreFilter>,
         sort: Option<StoreSort>,
     ) -> Result<ListResult<Store>, ListError> {
-        get_stores(ctx, pagination, filter, sort)
+        unimplemented!()
+        // get_stores(ctx, pagination, filter, sort)
     }
 
     fn get_store(
@@ -309,10 +309,11 @@ pub trait GeneralServiceTrait: Sync + Send {
         ctx: &ServiceContext,
         filter: StoreFilter,
     ) -> Result<Option<Store>, RepositoryError> {
-        get_store(ctx, filter)
+        unimplemented!()
+        // get_store(ctx, filter)
     }
 }
 
-pub struct GeneralService;
+pub struct DefaultGeneralService;
 
-impl GeneralServiceTrait for GeneralService {}
+impl GeneralServiceTrait for DefaultGeneralService {}

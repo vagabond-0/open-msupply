@@ -2082,6 +2082,61 @@ dependencies = [
 ]
 
 [[package]]
+name = "compilation_check"
+version = "0.1.0"
+dependencies = [
+ "actix-files",
+ "actix-multipart",
+ "actix-rt",
+ "actix-web",
+ "anyhow",
+ "assert-json-diff",
+ "assert_approx_eq",
+ "async-trait",
+ "base64 0.22.1",
+ "bcrypt",
+ "chrono",
+ "extism",
+ "flate2",
+ "headless_chrome",
+ "hex",
+ "httpmock",
+ "jsonschema",
+ "jsonwebtoken",
+ "log",
+ "machine-uid",
+ "pem",
+ "pretty_assertions",
+ "qrcode",
+ "rand",
+ "repository",
+ "reqwest",
+ "rsa",
+ "rust-embed 8.5.0",
+ "schemafy",
+ "schemafy_core",
+ "scraper",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "service",
+ "sha2",
+ "simple-log",
+ "telnet",
+ "temperature-sensor",
+ "tempfile",
+ "tera",
+ "thiserror",
+ "tokio",
+ "topological-sort",
+ "umya-spreadsheet",
+ "url",
+ "util",
+ "walkdir",
+ "x509-parser",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7787,6 +7842,7 @@ dependencies = [
  "astro-dnssd",
  "chrono",
  "clap",
+ "compilation_check",
  "config",
  "extism",
  "futures",

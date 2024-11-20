@@ -20,6 +20,7 @@ graphql = { path = "../graphql" }
 graphql_core = { path = "../graphql/core" }
 repository = { path = "../repository" }
 service = { path = "../service" }
+compilation_check = { path = "../compilation_check" }
 util = { path = "../util" }
 
 machine-uid = { version = "0.5.1", optional = true }
