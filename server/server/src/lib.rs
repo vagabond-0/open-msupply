@@ -27,7 +27,7 @@ use service::{
     processors::Processors,
     service_provider::ServiceProvider,
     settings::{is_develop, ServerSettings, Settings},
-    standard_reports::StandardReports,
+    standard_reports::Reports,
     sync::{
         file_sync_driver::FileSyncDriver,
         synchroniser_driver::{SiteIsInitialisedCallback, SynchroniserDriver},
@@ -91,7 +91,7 @@ pub async fn start_server(
     info!("Run DB migrations...done");
 
     // Upsert standard reports
-    StandardReports::load_reports(&connection_manager.connection().unwrap()).unwrap();
+    Reports::load_reports(&connection_manager.connection().unwrap()).unwrap();
 
     // INITIALISE CONTEXT
     info!("Initialising server context..");

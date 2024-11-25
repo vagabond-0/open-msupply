@@ -13,24 +13,24 @@ use serde::{Deserialize, Serialize};
 // Relative to server/Cargo.toml
 #[folder = "../reports/generated"]
 #[exclude = "*.DS_Store"]
-pub struct EmbeddedStandardReports;
+pub struct EmbeddedReports;
 
 #[derive(Debug, Error)]
 #[error("No standard reports found")]
-pub struct StandardReportsError;
+pub struct ReportsError;
 
 #[derive(Clone)]
-pub struct StandardReports;
+pub struct Reports;
 
-impl StandardReports {
+impl Reports {
     // Load embedded reports
     pub fn load_reports(con: &StorageConnection) -> Result<(), anyhow::Error> {
         info!("upserting standard reports...");
-        for file in EmbeddedStandardReports::iter() {
-            if let Some(content) = EmbeddedStandardReports::get(&file) {
+        for file in EmbeddedReports::iter() {
+            if let Some(content) = EmbeddedReports::get(&file) {
                 let json_data = content.data;
                 let reports_data: ReportsData = serde_json::from_slice(&json_data)?;
-                StandardReports::upsert_reports(reports_data, con)?;
+                Reports::upsert_reports(reports_data, con)?;
             }
         }
         Ok(())
@@ -69,7 +69,44 @@ impl StandardReports {
                 code: report.code,
             })?;
         }
-        info!("Upserted {} standard reports", num_std_reports);
+        info!("Upserted {} reports", num_std_reports);
+        Ok(())
+    }
+
+    pub fn upsert_report(
+        report_data: ReportData,
+        con: &StorageConnection,
+    ) -> Result<(), anyhow::Error> {
+        let existing_report = ReportRowRepository::new(con)
+            .find_one_by_code_and_version(&report_data.code, &report_data.version)?;
+
+        // Use the existing ID if already defined for that report
+        let id = existing_report.map_or_else(|| report_data.clone().id, |r| r.id.clone());
+        info!(
+            "Upserting Report {} v{}",
+            report_data.code, report_data.version
+        );
+
+        if let Some(form_schema_json) = &report_data.form_schema {
+            // TODO: Look up existing json schema and use it's ID to be safe...
+            FormSchemaRowRepository::new(con).upsert_one(form_schema_json)?;
+        }
+
+        ReportRowRepository::new(con).upsert_one(&ReportRow {
+            id,
+            name: report_data.name.clone(),
+            r#type: repository::ReportType::OmSupply,
+            template: serde_json::to_string_pretty(&report_data.template)?,
+            context: report_data.context,
+            sub_context: report_data.sub_context,
+            argument_schema_id: report_data.argument_schema_id,
+            comment: report_data.comment,
+            is_custom: report_data.is_custom,
+            version: report_data.version,
+            code: report_data.code,
+        })?;
+        info!("{}", format!("Upserted report: {:?}", report_data.name));
+
         Ok(())
     }
 }

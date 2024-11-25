@@ -52,7 +52,7 @@ use crate::{
     rnr_form::{RnRFormService, RnRFormServiceTrait},
     sensor::{SensorService, SensorServiceTrait},
     settings_service::{SettingsService, SettingsServiceTrait},
-    standard_reports::StandardReports,
+    standard_reports::Reports,
     stock_line::{StockLineService, StockLineServiceTrait},
     stocktake::{StocktakeService, StocktakeServiceTrait},
     stocktake_line::{StocktakeLineService, StocktakeLineServiceTrait},
@@ -157,7 +157,7 @@ pub struct ServiceProvider {
     // Translations
     pub translations_service: Box<Localisations>,
     // Standard Reports
-    pub standard_reports: Box<StandardReports>,
+    pub standard_reports: Box<Reports>,
 }
 
 pub struct ServiceContext {
@@ -248,7 +248,7 @@ impl ServiceProvider {
             rnr_form_service: Box::new(RnRFormService {}),
             vaccination_service: Box::new(VaccinationService {}),
             translations_service: Box::new(Localisations::new()),
-            standard_reports: Box::new(StandardReports {}),
+            standard_reports: Box::new(Reports {}),
         }
     }
 
