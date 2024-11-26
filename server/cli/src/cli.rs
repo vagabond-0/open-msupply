@@ -10,7 +10,7 @@ use report_builder::{build::build_report_definition, BuildArgs};
 use repository::{
     get_storage_connection_manager, schema_from_row, test_db, ContextType, EqualFilter,
     FormSchemaRow, FormSchemaRowRepository, KeyType, KeyValueStoreRepository, ReportFilter,
-    ReportRepository, ReportRow, ReportRowRepository, SyncBufferRowRepository,
+    ReportRepository, ReportRow, ReportRowRepository, StorageConnection, SyncBufferRowRepository,
 };
 use serde::{Deserialize, Serialize};
 use server::configuration;
@@ -21,7 +21,7 @@ use service::{
     plugin::validation::sign_plugin,
     service_provider::{ServiceContext, ServiceProvider},
     settings::Settings,
-    standard_reports::{ReportData, ReportsData, StandardReports},
+    standard_reports::{ReportData, Reports, ReportsData},
     sync::{
         file_sync_driver::FileSyncDriver, settings::SyncSettings, sync_status::logger::SyncLogger,
         synchroniser::integrate_and_translate_sync_buffer, synchroniser_driver::SynchroniserDriver,
@@ -149,6 +149,16 @@ enum Action {
         /// Optional reports json path. This needs to be of type ReportsData. If none supplied, will upload the standard generated reports
         #[clap(short, long)]
         json_path: Option<String>,
+    },
+    ShowReport {
+        //  directory of report source files
+        #[clap(short, long)]
+        dir: String,
+    },
+    UpsertReportFromSource {
+        //  directory of report source files
+        #[clap(short, long)]
+        dir: String,
     },
 }
 
@@ -561,7 +571,7 @@ async fn main() -> anyhow::Result<()> {
             let connection_manager = get_storage_connection_manager(&settings.database);
             let con = connection_manager.connection()?;
 
-            let _ = StandardReports::upsert_reports(reports_data, &con);
+            let _ = Reports::upsert_reports(reports_data, &con);
         }
         Action::UpsertReport {
             id,
@@ -618,15 +628,124 @@ async fn main() -> anyhow::Result<()> {
 
             info!("Report upserted");
         }
+
         Action::Backup => {
             backup(&settings)?;
         }
         Action::Restore(arguments) => {
             restore(&settings, arguments)?;
         }
+        Action::ShowReport { dir } => {}
+        Action::UpsertReportFromSource { dir } => {
+            let connection_manager = get_storage_connection_manager(&settings.database);
+            let connection = connection_manager.connection()?;
+            // render dir
+            let report_dir = format!("{dir}/manifest.json");
+
+            // read manifest file
+            let manifest_file = fs::File::open(report_dir.clone())
+                .expect(&format!("Unable to read manifest file in {report_dir}"));
+
+            let manifest: Manifest = serde_json::from_reader(manifest_file)
+                .expect("manifest json not formatted correctly");
+
+            // install esbuild depedencies
+            if let Err(e) = run_yarn_install(&dir) {
+                eprintln!("Failed to run yarn install in {}", dir);
+            }
+            let report_data = build_report_from_manifest(dir, manifest, &connection)?;
+
+            let _ = Reports::upsert_report(report_data, &connection);
+
+            info!("Report upserted");
+        }
     }
 
     Ok(())
+}
+
+fn build_report_from_manifest(
+    dir: String,
+    manifest: Manifest,
+    // version_dir: Option<String>,
+    connection: &StorageConnection,
+) -> Result<ReportData, anyhow::Error> {
+    let code = manifest.code;
+    let version = manifest.version;
+    let id = format!("{code}_{version}");
+    let context = manifest.context;
+    let report_name = manifest.name;
+    let is_custom = manifest.is_custom;
+    let sub_context = manifest.sub_context;
+    let arguments_path = manifest
+        .arguments
+        .clone()
+        .and_then(|a| a.schema)
+        .and_then(|schema| format!("{dir}/{schema}").into());
+    let arguments_ui_path = manifest
+        .arguments
+        .and_then(|a| a.ui)
+        .and_then(|ui| format!("{dir}/{ui}").into());
+    let graphql_query = manifest.queries.clone().and_then(|q| q.gql);
+    let sql_queries = manifest.queries.clone().and_then(|q| q.sql);
+    let convert_data = manifest
+        .convert_data
+        .and_then(|cd| format!("{dir}/{cd}").into());
+    let custom_wasm_function = manifest.custom_wasm_function;
+
+    let args = BuildArgs {
+        dir: format!("{dir}/src"),
+        output: format!("{dir}/generated/{report_name}.json").into(),
+        template: "template.html".to_string(),
+        header: manifest.header,
+        footer: manifest.footer,
+        query_gql: graphql_query,
+        query_default: None,
+        query_sql: sql_queries,
+        convert_data,
+        custom_wasm_function,
+    };
+
+    let report_definition =
+        build_report_definition(&args).map_err(|_| anyhow!("Failed to build report {:?}", id))?;
+
+    let filter = ReportFilter::new().id(EqualFilter::equal_to(&id));
+    let existing_report = ReportRepository::new(connection)
+        .query_by_filter(filter)?
+        .pop();
+
+    let argument_schema_id =
+        existing_report.and_then(|r| r.argument_schema.as_ref().map(|r| r.id.clone()));
+
+    let form_schema_json = match (arguments_path, arguments_ui_path) {
+        (Some(_), None) | (None, Some(_)) => {
+            return Err(anyhow!(
+                "When arguments path are specified both paths must be present"
+            ))
+        }
+        (Some(arguments_path), Some(arguments_ui_path)) => Some(schema_from_row(FormSchemaRow {
+            id: argument_schema_id.unwrap_or(format!("for_report_{}", id)),
+            r#type: "reportArgument".to_string(),
+            json_schema: fs::read_to_string(arguments_path)?,
+            ui_schema: fs::read_to_string(arguments_ui_path)?,
+        })?),
+        (None, None) => None,
+    };
+
+    Ok(ReportData {
+        id: format!("{code}_{version}"),
+        name: report_name,
+        r#type: repository::ReportType::OmSupply,
+        template: report_definition,
+        context,
+        sub_context,
+        argument_schema_id: form_schema_json.clone().map(|r| r.id.clone()),
+        comment: None,
+        is_custom,
+        version: version.to_string(),
+        code,
+        form_schema: form_schema_json,
+    })
 }
 
 fn export_paths(name: &str) -> (PathBuf, PathBuf, PathBuf) {
