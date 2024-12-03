@@ -2,12 +2,15 @@ use crate::sync::{
     sync_serde::empty_str_as_option_string, translations::form_schema::FormSchemaTranslation,
 };
 use repository::{
-    ContextType, ReportRow, ReportRowDelete, ReportType, StorageConnection, SyncBufferRow,
+    ChangelogRow, ChangelogTableName, ReportRow, ReportRowDelete, ReportRowRepository,
+    StorageConnection, SyncBufferRow,
 };
 
 use serde::{Deserialize, Serialize};
 
-use super::{PullTranslateResult, SyncTranslation};
+use super::{
+    PullTranslateResult, PushTranslateResult, SyncTranslation, ToSyncRecordTranslationType,
+};
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub enum LegacyReportEditor {
@@ -81,52 +84,45 @@ impl SyncTranslation for ReportTranslation {
         _: &StorageConnection,
         sync_record: &SyncBufferRow,
     ) -> Result<PullTranslateResult, anyhow::Error> {
-        let LegacyReportRow {
-            id,
-            report_name,
-            editor,
-            context,
-            template,
-            comment,
-            sub_context,
-            argument_schema_id,
-        } = serde_json::from_str::<LegacyReportRow>(&sync_record.data)?;
+        println!("sync record {:?}", sync_record);
+        Ok(PullTranslateResult::upsert(serde_json::from_str::<
+            ReportRow,
+        >(&sync_record.data)?))
+    }
 
-        let r#type = match editor {
-            LegacyReportEditor::OmSupply => ReportType::OmSupply,
-            LegacyReportEditor::Others => return Ok(PullTranslateResult::NotMatched),
-        };
-        let context = match context {
-            LegacyReportContext::CustomerInvoice => ContextType::OutboundShipment,
-            LegacyReportContext::SupplierInvoice => ContextType::InboundShipment,
-            LegacyReportContext::Requisition => ContextType::Requisition,
-            LegacyReportContext::Stocktake => ContextType::Stocktake,
-            LegacyReportContext::Patient => ContextType::Patient,
-            LegacyReportContext::Dispensary => ContextType::Dispensary,
-            LegacyReportContext::Repack => ContextType::Repack,
-            LegacyReportContext::Report => ContextType::Report,
-            LegacyReportContext::Others => {
-                return Ok(PullTranslateResult::Ignored(
-                    "Unsupported report context".to_string(),
-                ))
+    fn change_log_type(&self) -> Option<ChangelogTableName> {
+        Some(ChangelogTableName::Report)
+    }
+
+    fn should_translate_to_sync_record(
+        &self,
+        row: &ChangelogRow,
+        r#type: &ToSyncRecordTranslationType,
+    ) -> bool {
+        match r#type {
+            ToSyncRecordTranslationType::PullFromOmSupplyCentral => {
+                self.change_log_type().as_ref() == Some(&row.table_name)
             }
-        };
+            _ => false,
+        }
+    }
 
-        let result = ReportRow {
-            id: id.clone(),
-            name: report_name,
-            r#type,
-            template,
-            context,
-            comment,
-            sub_context,
-            argument_schema_id,
-            is_custom: true,
-            version: "1.0".to_string(),
-            code: id,
-        };
-
-        Ok(PullTranslateResult::upsert(result))
+    fn try_translate_to_upsert_sync_record(
+        &self,
+        connection: &StorageConnection,
+        changelog: &ChangelogRow,
+    ) -> Result<PushTranslateResult, anyhow::Error> {
+        let row = ReportRowRepository::new(connection)
+            .find_one_by_id(&changelog.record_id)?
+            .ok_or(anyhow::Error::msg(format!(
+                "Report row ({}) not found",
+                changelog.record_id
+            )))?;
+        Ok(PushTranslateResult::upsert(
+            changelog,
+            self.table_name(),
+            serde_json::to_value(row)?,
+        ))
     }
 
     fn try_translate_from_delete_sync_record(

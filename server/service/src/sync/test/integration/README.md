@@ -44,8 +44,10 @@ Only data that needs to be present on central server site is a new sync site (th
 
 ## 4 `Open mSupply central server`
 
-- Another instance of omSupply should be running as central server, in order to set omSupply instance as central server, you will need to check "Site is open mSupply central server" against the site and enter correct This site url again the site in mSupply->Special->Synchronisation->{Site}
-- And graphql API should be 'open' (without token), thus 'APP\_\_SERVER\_\_DEBUG_NO_ACCESS_CONTROL' env variable should be set to `true`
+- Another instance of omSupply should be running as central server.
+- "Site is open mSupply central server" and a omSupply central server url need to be set at mSupply->Special->Synchronisation->{Site} to enable omSupply central server.
+- Remote sites will look at this url to sync with omSupply central server; this port needs to match the port omSupply central server is running on. The port is set to 2055 in this example case.
+- Graphql API should be 'open' (without token), thus 'APP\_\_SERVER\_\_DEBUG_NO_ACCESS_CONTROL' env variable should be set to `true`.
 
 In case you are wondering, the APP env variables translate to settings in [configuration .yaml](https://github.com/msupply-foundation/open-msupply/blob/1b8b9237863eef1a764be3973d563e6d84358827/server/configuration/example.yaml#L7) files, and override them
 

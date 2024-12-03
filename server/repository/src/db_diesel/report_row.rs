@@ -3,7 +3,9 @@ use super::{
 };
 
 use crate::repository_error::RepositoryError;
-use crate::{Delete, Upsert};
+use crate::{
+    ChangeLogInsertRow, ChangelogRepository, ChangelogTableName, Delete, RowActionType, Upsert,
+};
 use clap::ValueEnum;
 use diesel::prelude::*;
 use diesel_derive_enum::DbEnum;
@@ -56,7 +58,9 @@ joinable!(report -> form_schema (argument_schema_id));
 
 allow_tables_to_appear_in_same_query!(report, form_schema);
 
-#[derive(Clone, Insertable, Queryable, Debug, PartialEq, Eq, AsChangeset)]
+#[derive(
+    Clone, Insertable, Queryable, Debug, PartialEq, Eq, AsChangeset, Deserialize, Serialize,
+)]
 #[diesel(table_name = report)]
 pub struct ReportRow {
     pub id: String,
@@ -123,14 +127,25 @@ impl<'a> ReportRowRepository<'a> {
         Ok(result)
     }
 
-    pub fn upsert_one(&self, row: &ReportRow) -> Result<(), RepositoryError> {
+    pub fn upsert_one(&self, row: &ReportRow) -> Result<i64, RepositoryError> {
         diesel::insert_into(report_dsl::report)
             .values(row)
             .on_conflict(report_dsl::id)
             .do_update()
             .set(row)
             .execute(self.connection.lock().connection())?;
-        Ok(())
+        self.insert_changelog(&row.id, RowActionType::Upsert)
+    }
+
+    fn insert_changelog(&self, uid: &str, action: RowActionType) -> Result<i64, RepositoryError> {
+        let row = ChangeLogInsertRow {
+            table_name: ChangelogTableName::Report,
+            record_id: uid.to_string(),
+            row_action: action,
+            store_id: None,
+            name_link_id: None,
+        };
+        ChangelogRepository::new(self.connection).insert(&row)
     }
 
     pub fn delete(&self, id: &str) -> Result<(), RepositoryError> {

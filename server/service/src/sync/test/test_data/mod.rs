@@ -207,6 +207,7 @@ pub(crate) fn get_all_sync_v6_records() -> Vec<TestSyncOutgoingRecord> {
     test_records.append(&mut item_variant::test_v6_central_push_records());
     test_records.append(&mut packaging_variant::test_v6_central_push_records());
     test_records.append(&mut property::test_v6_central_push_records());
+    test_records.append(&mut report::test_v6_central_push_records());
 
     // Remote
     test_records.append(&mut asset::test_v6_records());

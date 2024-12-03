@@ -342,7 +342,7 @@ pub(crate) trait SyncTranslation {
     /// A single table name to match on, If there's just one table name to match on, use this function
     fn table_name(&self) -> &str {
         ""
-    }   
+    }
 
     /// If you need to match on more than one table_name with the same translator, use this one...
     fn table_names(&self) -> Vec<&str> {
