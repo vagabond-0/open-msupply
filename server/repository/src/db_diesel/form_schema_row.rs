@@ -14,7 +14,9 @@ table! {
     }
 }
 
-#[derive(Clone, Queryable, Insertable, AsChangeset, Debug, PartialEq)]
+#[derive(
+    Clone, Queryable, Insertable, Eq, AsChangeset, Debug, PartialEq, Deserialize, Serialize,
+)]
 #[diesel(table_name = form_schema)]
 pub struct FormSchemaRow {
     /// The json schema id
@@ -116,6 +118,9 @@ impl<'a> FormSchemaRowRepository<'a> {
         Ok(result)
     }
 }
+
+// TODO add delete impl
+// pub struct FormSchemaRowDelete(pub String)
 
 impl Upsert for FormSchemaJson {
     fn upsert(&self, con: &StorageConnection) -> Result<Option<i64>, RepositoryError> {
