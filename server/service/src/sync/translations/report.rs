@@ -1,67 +1,13 @@
-use crate::sync::{
-    sync_serde::empty_str_as_option_string, translations::form_schema::FormSchemaTranslation,
-};
 use repository::{
     ChangelogRow, ChangelogTableName, ReportRow, ReportRowDelete, ReportRowRepository,
     StorageConnection, SyncBufferRow,
 };
 
-use serde::{Deserialize, Serialize};
+use crate::sync::translations::form_schema::FormSchemaTranslation;
 
 use super::{
     PullTranslateResult, PushTranslateResult, SyncTranslation, ToSyncRecordTranslationType,
 };
-
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
-pub enum LegacyReportEditor {
-    #[serde(rename = "omsupply")]
-    OmSupply,
-    #[serde(other)]
-    Others,
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
-pub enum LegacyReportContext {
-    #[serde(rename = "Customer Invoice")]
-    CustomerInvoice,
-    #[serde(rename = "Supplier Invoice")]
-    SupplierInvoice,
-    #[serde(rename = "Requisition")]
-    Requisition,
-    #[serde(rename = "Stock Take")]
-    Stocktake,
-
-    #[serde(rename = "Patient Details")]
-    Patient,
-    #[serde(rename = "Dispensary")]
-    Dispensary,
-
-    #[serde(rename = "Repack Finalised")]
-    Repack,
-    Report,
-    #[serde(other)]
-    Others,
-}
-
-#[allow(non_snake_case)]
-#[derive(Deserialize, Serialize)]
-pub struct LegacyReportRow {
-    #[serde(rename = "ID")]
-    pub id: String,
-    pub report_name: String,
-    pub editor: LegacyReportEditor,
-    pub context: LegacyReportContext,
-    pub template: String,
-
-    #[serde(rename = "Comment")]
-    #[serde(deserialize_with = "empty_str_as_option_string")]
-    pub comment: Option<String>,
-    #[serde(deserialize_with = "empty_str_as_option_string")]
-    pub sub_context: Option<String>,
-    #[serde(rename = "form_schema_ID")]
-    #[serde(deserialize_with = "empty_str_as_option_string")]
-    pub argument_schema_id: Option<String>,
-}
 
 // Needs to be added to all_translators()
 #[deny(dead_code)]
@@ -70,12 +16,14 @@ pub(crate) fn boxed() -> Box<dyn SyncTranslation> {
 }
 
 pub(super) struct ReportTranslation;
+
 impl SyncTranslation for ReportTranslation {
     fn table_name(&self) -> &str {
         "report"
     }
 
     fn pull_dependencies(&self) -> Vec<&str> {
+        // TODO update these to omSupply central server sync
         vec![FormSchemaTranslation.table_name()]
     }
 
@@ -84,7 +32,6 @@ impl SyncTranslation for ReportTranslation {
         _: &StorageConnection,
         sync_record: &SyncBufferRow,
     ) -> Result<PullTranslateResult, anyhow::Error> {
-        println!("sync record {:?}", sync_record);
         Ok(PullTranslateResult::upsert(serde_json::from_str::<
             ReportRow,
         >(&sync_record.data)?))
