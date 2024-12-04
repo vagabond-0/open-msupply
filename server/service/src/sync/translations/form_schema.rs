@@ -2,10 +2,22 @@ use repository::{
     ChangelogRow, ChangelogTableName, FormSchemaJson, FormSchemaRowRepository, StorageConnection,
     SyncBufferRow,
 };
+use serde::Deserialize;
+use serde_json::Value;
 
 use super::{
     PullTranslateResult, PushTranslateResult, SyncTranslation, ToSyncRecordTranslationType,
 };
+
+#[allow(non_snake_case)]
+#[derive(Deserialize)]
+pub struct LegacyFormSchemaRow {
+    #[serde(rename = "ID")]
+    id: String,
+    r#type: String,
+    json_schema: Value,
+    ui_schema: Value,
+}
 
 // Needs to be added to all_translators()
 #[deny(dead_code)]
@@ -28,10 +40,32 @@ impl SyncTranslation for FormSchemaTranslation {
         _: &StorageConnection,
         sync_record: &SyncBufferRow,
     ) -> Result<PullTranslateResult, anyhow::Error> {
-        Ok(PullTranslateResult::upsert(serde_json::from_str::<
-            FormSchemaJson,
-        >(&sync_record.data)?))
+        let LegacyFormSchemaRow {
+            id,
+            r#type,
+            json_schema,
+            ui_schema,
+        } = serde_json::from_str::<LegacyFormSchemaRow>(&sync_record.data)?;
+
+        let result = FormSchemaJson {
+            id,
+            r#type,
+            json_schema,
+            ui_schema,
+        };
+
+        Ok(PullTranslateResult::upsert(result))
     }
+
+    // fn try_translate_from_upsert_sync_record(
+    //     &self,
+    //     _: &StorageConnection,
+    //     sync_record: &SyncBufferRow,
+    // ) -> Result<PullTranslateResult, anyhow::Error> {
+    //     Ok(PullTranslateResult::upsert(serde_json::from_str::<
+    //         FormSchemaJson,
+    //     >(&sync_record.data)?))
+    // }
 
     fn change_log_type(&self) -> Option<ChangelogTableName> {
         Some(ChangelogTableName::FormSchemaRow)
