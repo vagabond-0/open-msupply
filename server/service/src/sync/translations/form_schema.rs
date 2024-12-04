@@ -34,7 +34,7 @@ impl SyncTranslation for FormSchemaTranslation {
     }
 
     fn change_log_type(&self) -> Option<ChangelogTableName> {
-        Some(ChangelogTableName::FormSchemaJson)
+        Some(ChangelogTableName::FormSchemaRow)
     }
 
     fn should_translate_to_sync_record(

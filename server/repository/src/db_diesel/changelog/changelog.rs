@@ -113,7 +113,7 @@ pub enum ChangelogTableName {
     BundledItem,
     Item,
     Report,
-    FormSchemaJson,
+    FormSchemaRow,
 }
 
 pub(crate) enum ChangeLogSyncStyle {
@@ -182,7 +182,7 @@ impl ChangelogTableName {
             ChangelogTableName::IndicatorValue => ChangeLogSyncStyle::Legacy,
             ChangelogTableName::BundledItem => ChangeLogSyncStyle::Central,
             ChangelogTableName::Report => ChangeLogSyncStyle::Central,
-            ChangelogTableName::FormSchemaJson => ChangeLogSyncStyle::Central,
+            ChangelogTableName::FormSchemaRow => ChangeLogSyncStyle::Central,
         }
     }
 }
