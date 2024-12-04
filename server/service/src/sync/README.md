@@ -5,29 +5,31 @@ A mechanism that allows for this to happen is called **Synchronisation**, or **S
 
 ## Glossary
 
-`site`: An instance of Open mSupply with one or more active stores
+`site`: An instance of Open mSupply with one or more active stores.
 
-`remote site`: This is the same as a site, but we quite often refer to it as ‘remote site’ to emphasise that it’s not always accessible via the internet, and even though it’s part of the same system, it’s not always directly connected to the system.
+`remote site`: A sub category of `site`. ‘remote site’ is used to emphasise it is not always accessible via the internet and not always connected to the system.
 
-`central server`/`configuration server`: The main site of mSupply system, this is where central data is configured, including credentials for remote sites, users and active store associations with sites. This is also the server that ‘drives’ synchronisation, all remote sites will synchronise with the central server, which in turn can forward records to other sites (for example, in case of transfer).
+`central server`/`configuration server`: The main site of the mSupply system. This is where central data is configured including credentials for remote sites, users, and active store associations with sites. This is also the server that ‘drives’ synchronisation. All remote sites will synchronise with the central server which in turn can forward records to other sites (for example in case of transfers).
 
-`active store`: A store can only belong to one site, even though data for any store is accessible on the central server, certain remote records that are owned by a store can only be edited on a site where the store is active.
+`omSupply central server`: The instance of open mSupply configured as a central server sync site for other open mSupply sites.
 
-`transfer`: Some data needs to be transferred between sites, for example a shipment from one site to another, we call these records transfers. See [processors](https://github.com/msupply-foundation/open-msupply/blob/bc83acbb3cd51fe3375ac01135c6eb880a793936/server/service/src/processors/README.md#L1) for more details
+`active store`: A physical location managed by the digital `site`. A store can only belong to one site. Data for any store is visible on the `central server`. Certain remote records that are owned by a store can only be edited on a site where the store is active.
+
+`transfer`: Data tramsferred between sites. For example this is used when shipments need to be moved from one `site` to another. See [processors](https://github.com/msupply-foundation/open-msupply/blob/bc83acbb3cd51fe3375ac01135c6eb880a793936/server/service/src/processors/README.md#L1) for more details
 
 ## Record Types
 
-Records are treated differently by central server and remote sites based on data types, for example remote records belong to only one store and are only editable on a site where this store is active, whereas central data is only editable on a central server, the former usually syncs from remote site to central server whereas the later will only travel from central server to remote site.
+Records are treated differently by central server and remote sites based on data types. Some records are remote records/data that belong to only one store and are only editable on a site where this store is active, whereas central records/data is only editable on a central server. The former usually syncs from remote site to central server whereas the latter will only travel from central server to remote site.
 
-`remote record/data`: Can only be owned and edited by one store, on a site where this store is active, this data typically travels from remote site where it’s created and edited, to central server, which in turn may decide to forward it to another remote site (in case of transfers). Shipment, requisition, stock_line are examples of remote record.
+`remote record/data`: Can only be owned and edited by one store. On a site where this store is active, this data typically travels from remote site where it’s created and edited, to central server, which in turn may decide to forward it to another remote site (in case of transfers). Shipment, requisition, stock_line are examples of remote record.
 
-`central record/data`: This record is only editable on central server, and only travels in one direction, from central server to all remote sites. All central data will sync to all remote sites. Items and units are examples of central records.
+`central record/data`: are only editable on central server. These travel in one direction from central server to all remote sites. All central data will sync to all remote sites. Items and units are examples of central records.
 
-`central-remote record/data`: These records are editable in the same way as central data, but it will only sync to remote sites where these records are relevant. For example, master_list or name_store_join.
+`central-remote record/data`: are editable in the same way as central data, but it will only sync to remote sites where these records are relevant. For example, master_list or name_store_join.
 
-`transfer record/data`: This is remote record but for a store that is not active on current site, this record is visible but not editable. For example, request requisition in response site.
+`transfer record/data`: are remote records but for a store that is not active on current site. This record is visible but not editable. For example, transfer requisitions.
 
-`shared-remote record/data`: Editable on any site and sync to all sites. For example barcodes
+`shared-remote record/data`: Editable on any site and sync to all sites. For example, barcodes.
 
 `patient record/data`: Editable and accessible on any site where the patient is visible. Visibility in this case is determined by name store join. Prescribers, patients and patient documents are examples of patient record.
 
@@ -92,7 +94,7 @@ In google drive, under `Knowledge Base > Sync System > How to add v6 sync for ce
 
 [Add om report translations](https://github.com/msupply-foundation/open-msupply/commit/bd73a2be5cf33670635e55709a120d2145a98731)
 
-[Add tests](https://github.com/msupply-foundation/open-msupply/commit/6ef0d9952ac89d3eb31fa5ac1893e154ad8319ee) 
+[Add tests](https://github.com/msupply-foundation/open-msupply/commit/6ef0d9952ac89d3eb31fa5ac1893e154ad8319ee)
 
 ## Central Servers
 
@@ -117,8 +119,6 @@ Open mSupply's central server uses ChangeLog to keep track of which records have
 In Original mSupply central server, remote/transfer/shared records are added to a sync queue for the related remote site. This queue is used to figure out what should go to what site when there are sync API requests from remote sites.
 
 In Open mSupply, ChangeLog is used for this. The logic, of determining which records should go to which site, happens in one sql statement on the `ChangeLog` table, which would look something like this:
-
-
 
 ```SQL
 SELECT * FROM changelog_dedup
