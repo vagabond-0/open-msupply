@@ -64,11 +64,10 @@ pub(crate) enum ProcessRequisitionTransfersError {
 fn log_system_error(
     connection: &StorageConnection,
     error: &ProcessRequisitionTransfersError,
-) -> Result<(), ProcessRequisitionTransfersError> {
+) -> Result<(), RepositoryError> {
     let error_message = format!("ProcessRequisitionTransfersError: {:?}", error);
     log::error!("{}", error_message);
-    system_log_entry(connection, SystemLogType::ProcessorError, &error_message)
-        .map_err(|e| ProcessRequisitionTransfersError::DatabaseError(RepositoryError::from(e)))?;
+    system_log_entry(connection, SystemLogType::ProcessorError, &error_message)?;
     Ok(())
 }
 
@@ -155,7 +154,7 @@ pub(crate) fn process_requisition_transfers(
         for log in logs {
             let result = process_change_log(&ctx.connection, &log, &processors, &active_stores);
             if let Err(e) = result {
-                log_system_error(&ctx.connection, &e)?;
+                log_system_error(&ctx.connection, &e).map_err(Error::DatabaseError)?;
             }
 
             // Always update cursor and move on to the next log, even if there's an error
